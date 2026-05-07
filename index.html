@@ -219,6 +219,48 @@ footer .brand-small { color: var(--text); font-weight: 600; }
   section { padding: 32px 0; }
 }
 
+/* ============ EXPERIENCE CARDS ============ */
+.exp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+.exp-card {
+  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius);
+  padding: 28px 24px; cursor: pointer; transition: all 0.25s; color: #f5f0e8;
+  text-align: center; position: relative; overflow: hidden;
+}
+.exp-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+.exp-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.exp-card-icon { font-size: 2.5rem; margin-bottom: 14px; display: block; }
+.exp-card-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
+.exp-card-price { font-size: 1.5rem; font-weight: 800; color: var(--accent); margin-bottom: 10px; }
+.exp-card-price span { font-size: 0.8rem; font-weight: 400; color: #7a7570; }
+.exp-card-desc { font-size: 0.85rem; color: #7a7570; line-height: 1.5; }
+.exp-card-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.7rem;
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px;
+}
+
+/* ============ EXPERIENCE FORM ============ */
+.exp-form-container {
+  max-width: 560px; margin: 32px auto 0; background: #1a1a1a;
+  border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 32px;
+  color: #f5f0e8; display: none;
+}
+.exp-form-container.visible { display: block; animation: slideUp 0.3s ease; }
+.exp-form-title { font-family: 'Playfair Display', serif; font-size: 1.3rem; margin-bottom: 6px; }
+.exp-form-subtitle { color: #7a7570; font-size: 0.9rem; margin-bottom: 24px; }
+
+.budget-box {
+  background: #111; border: 1px solid #2a2a2a; border-radius: var(--radius-sm);
+  padding: 16px; margin: 20px 0; text-align: center;
+}
+.budget-label { font-size: 0.8rem; color: #7a7570; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+.budget-total { font-size: 2rem; font-weight: 800; color: var(--accent); }
+.budget-breakdown { font-size: 0.85rem; color: #7a7570; margin-top: 4px; }
+
+.public-notice {
+  background: #1a1510; border: 1px solid #3a2a10; border-radius: var(--radius-sm);
+  padding: 12px 16px; font-size: 0.85rem; color: #d4b06a; margin-bottom: 16px;
+}
+
 /* ============ HIDDEN SECTIONS ============ */
 .page { display: none; }
 .page.active { display: block; }
@@ -237,6 +279,7 @@ footer .brand-small { color: var(--text); font-weight: 600; }
 <!-- ==================== NAV ==================== -->
 <nav class="nav-tabs">
   <button class="nav-tab active" onclick="showPage('cartelera')">Cartelera</button>
+  <button class="nav-tab" onclick="showPage('experiencias')">Experiencias</button>
   <button class="nav-tab" onclick="showPage('impacto')">Impacto</button>
   <button class="nav-tab" onclick="showPage('contacto')">Contacto</button>
 </nav>
@@ -250,6 +293,44 @@ footer .brand-small { color: var(--text); font-weight: 600; }
       <div id="eventsGrid" class="events-grid">
         <div class="loading"><div class="spinner"></div>Cargando cartelera...</div>
       </div>
+    </div>
+  </section>
+</div>
+
+<!-- ==================== EXPERIENCIAS ==================== -->
+<div id="page-experiencias" class="page">
+  <section>
+    <div class="container">
+      <h2 class="section-title">Crea tu experiencia</h2>
+      <p class="section-subtitle">Elige como quieres vivir Trikles</p>
+
+      <div class="exp-grid" id="expGrid">
+        <div class="exp-card" onclick="selectExperience('peticion')">
+          <span class="exp-card-icon">🎬</span>
+          <span class="exp-card-badge" style="background:#1a1520;color:#c0a8e0;">Funcion publica</span>
+          <div class="exp-card-name">Peticion Abierta</div>
+          <div class="exp-card-price">$100 <span>por persona</span></div>
+          <div class="exp-card-desc">Tu eliges la pelicula. La funcion es publica: cualquiera puede unirse.</div>
+        </div>
+
+        <div class="exp-card" onclick="selectExperience('privado')">
+          <span class="exp-card-icon">🎟️</span>
+          <span class="exp-card-badge" style="background:#1a1510;color:#d4b06a;">Sala exclusiva</span>
+          <div class="exp-card-name">Cine Privado</div>
+          <div class="exp-card-price">$250 <span>por persona</span></div>
+          <div class="exp-card-desc">Sala exclusiva por 4 horas. Tu pelicula, tus invitados, tu experiencia.</div>
+        </div>
+
+        <div class="exp-card" onclick="selectExperience('cultural')">
+          <span class="exp-card-icon">🌿</span>
+          <span class="exp-card-badge" style="background:#0d1a1a;color:#70d0c0;">Evento comunitario</span>
+          <div class="exp-card-name">Espacio Cultural</div>
+          <div class="exp-card-price">$25 <span>por persona</span></div>
+          <div class="exp-card-desc">Organiza tu evento artistico, cultural o deportivo en la casa del arte.</div>
+        </div>
+      </div>
+
+      <div class="exp-form-container" id="expFormContainer"></div>
     </div>
   </section>
 </div>
@@ -682,6 +763,243 @@ function formatDate(dateStr) {
     const date = new Date(y, m - 1, d);
     return date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
   } catch { return dateStr; }
+}
+
+// ============ EXPERIENCES ============
+const EXP_CONFIG = {
+  peticion: {
+    nombre: 'Peticion Abierta',
+    precio: 100,
+    icon: '🎬',
+    color: '#c0a8e0',
+    fields: 'peticion'
+  },
+  privado: {
+    nombre: 'Cine Privado',
+    precio: 250,
+    icon: '🎟️',
+    color: '#d4b06a',
+    fields: 'privado'
+  },
+  cultural: {
+    nombre: 'Espacio Cultural / Deportivo',
+    precio: 25,
+    icon: '🌿',
+    color: '#70d0c0',
+    fields: 'cultural'
+  }
+};
+
+let selectedExp = null;
+
+function selectExperience(type) {
+  selectedExp = type;
+  const cfg = EXP_CONFIG[type];
+
+  // Highlight selected card
+  document.querySelectorAll('.exp-card').forEach((c, i) => {
+    const types = ['peticion', 'privado', 'cultural'];
+    c.classList.toggle('selected', types[i] === type);
+  });
+
+  const container = document.getElementById('expFormContainer');
+  container.className = 'exp-form-container visible';
+
+  let specificFields = '';
+
+  if (type === 'peticion') {
+    specificFields = `
+      <div class="public-notice">Esta funcion sera publica. Otras personas podran unirse y comprar su entrada.</div>
+      <div class="form-group">
+        <label>Pelicula que quieres ver *</label>
+        <input type="text" class="form-input" name="pelicula" required placeholder="Ej: Interstellar, El Padrino, Coco...">
+      </div>
+      <div class="form-group">
+        <label>Fecha deseada *</label>
+        <input type="date" class="form-input" name="fecha" required min="${getTomorrow()}">
+      </div>
+      <div class="form-group">
+        <label>Horario preferido *</label>
+        <select class="form-input" name="hora" required>
+          <option value="">Selecciona...</option>
+          <option value="16:00">16:00</option>
+          <option value="18:00">18:00</option>
+          <option value="20:00">20:00</option>
+          <option value="22:00">22:00</option>
+        </select>
+      </div>`;
+  } else if (type === 'privado') {
+    specificFields = `
+      <div class="form-group">
+        <label>Que quieres proyectar? *</label>
+        <input type="text" class="form-input" name="pelicula" required placeholder="Pelicula, documental, video especial, presentacion...">
+      </div>
+      <div class="form-group">
+        <label>Fecha deseada *</label>
+        <input type="date" class="form-input" name="fecha" required min="${getTomorrow()}">
+      </div>
+      <div class="form-group">
+        <label>Bloque de 4 horas *</label>
+        <select class="form-input" name="hora" required>
+          <option value="">Selecciona bloque...</option>
+          <option value="14:00">14:00 – 18:00</option>
+          <option value="16:00">16:00 – 20:00</option>
+          <option value="18:00">18:00 – 22:00</option>
+          <option value="19:00">19:00 – 23:00</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Detalles adicionales</label>
+        <textarea class="form-textarea" name="detalles" placeholder="Cumpleanos, cita, reunion corporativa, decoracion especial..."></textarea>
+      </div>`;
+  } else if (type === 'cultural') {
+    specificFields = `
+      <div class="form-group">
+        <label>Tipo de evento *</label>
+        <select class="form-input" name="tipo_evento" required>
+          <option value="">Selecciona...</option>
+          <option value="Artistico">Artistico (musica, teatro, danza, exposicion)</option>
+          <option value="Cultural">Cultural (conferencia, taller, proyeccion)</option>
+          <option value="Deportivo">Deportivo (torneo, exhibicion, entrenamiento)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Nombre del evento *</label>
+        <input type="text" class="form-input" name="pelicula" required placeholder="Ej: Torneo de ajedrez, Noche de jazz, Expo fotografia...">
+      </div>
+      <div class="form-group">
+        <label>Fecha deseada *</label>
+        <input type="date" class="form-input" name="fecha" required min="${getTomorrow()}">
+      </div>
+      <div class="form-group">
+        <label>Horario preferido *</label>
+        <select class="form-input" name="hora" required>
+          <option value="">Selecciona...</option>
+          <option value="10:00">10:00</option>
+          <option value="14:00">14:00</option>
+          <option value="16:00">16:00</option>
+          <option value="18:00">18:00</option>
+          <option value="20:00">20:00</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Descripcion del evento *</label>
+        <textarea class="form-textarea" name="detalles" required placeholder="Cuentanos de que se trata tu evento..."></textarea>
+      </div>`;
+  }
+
+  container.innerHTML = `
+    <div class="exp-form-title">${cfg.icon} ${cfg.nombre}</div>
+    <div class="exp-form-subtitle">$${cfg.precio} por persona · Llena los datos para solicitar</div>
+
+    <form onsubmit="submitExperience(event)">
+      ${specificFields}
+
+      <div class="form-group">
+        <label>Numero de asistentes *</label>
+        <input type="number" class="form-input" name="asistentes" required min="1" max="100" value="1"
+          oninput="updateBudget(this.value)">
+      </div>
+
+      <div class="budget-box">
+        <div class="budget-label">Presupuesto estimado</div>
+        <div class="budget-total" id="budgetTotal">$${cfg.precio} MXN</div>
+        <div class="budget-breakdown" id="budgetBreakdown">1 persona × $${cfg.precio}</div>
+      </div>
+
+      <div class="form-group">
+        <label>Tu nombre *</label>
+        <input type="text" class="form-input" name="nombre" required placeholder="Nombre completo">
+      </div>
+      <div class="form-group">
+        <label>WhatsApp *</label>
+        <input type="tel" class="form-input" name="telefono" required placeholder="+52 ...">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" class="form-input" name="email" placeholder="tu@email.com">
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="btnExpSubmit">Solicitar experiencia</button>
+    </form>`;
+
+  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function updateBudget(num) {
+  if (!selectedExp) return;
+  const cfg = EXP_CONFIG[selectedExp];
+  const n = Math.max(1, parseInt(num) || 1);
+  const total = n * cfg.precio;
+  document.getElementById('budgetTotal').textContent = `$${total.toLocaleString()} MXN`;
+  document.getElementById('budgetBreakdown').textContent = `${n} persona${n > 1 ? 's' : ''} × $${cfg.precio}`;
+}
+
+function getTomorrow() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().split('T')[0];
+}
+
+async function submitExperience(event) {
+  event.preventDefault();
+  const form = event.target;
+  const btn = document.getElementById('btnExpSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Enviando...';
+
+  const cfg = EXP_CONFIG[selectedExp];
+  const asistentes = parseInt(form.asistentes.value) || 1;
+  const total = asistentes * cfg.precio;
+
+  const tipoEvento = form.tipo_evento ? form.tipo_evento.value : '';
+  const detalles = form.detalles ? form.detalles.value : '';
+  const descripcion = form.pelicula ? form.pelicula.value : '';
+
+  const data = {
+    sheet: 'Solicitudes',
+    Tipo: cfg.nombre,
+    Nombre: form.nombre.value,
+    Telefono: form.telefono.value,
+    Email: form.email.value || '',
+    Descripcion: tipoEvento ? `[${tipoEvento}] ${descripcion} — ${detalles}` : descripcion + (detalles ? ' — ' + detalles : ''),
+    Fecha_Solicitada: form.fecha.value,
+    Hora_Solicitada: form.hora.value,
+    Num_Asistentes: String(asistentes),
+    Precio_Unitario: String(cfg.precio),
+    Total: String(total),
+    Estado: 'Pendiente'
+  };
+
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+  } catch (err) { console.error(err); }
+
+  // Show confirmation
+  const container = document.getElementById('expFormContainer');
+  container.innerHTML = `
+    <div class="confirmation">
+      <h2>Solicitud enviada</h2>
+      <p>Recibimos tu solicitud de <strong>${cfg.nombre}</strong> para ${asistentes} persona${asistentes > 1 ? 's' : ''}.</p>
+      <div class="budget-box">
+        <div class="budget-label">Total estimado</div>
+        <div class="budget-total">$${total.toLocaleString()} MXN</div>
+        <div class="budget-breakdown">${formatDate(form.fecha.value)} · ${form.hora.value}</div>
+      </div>
+      <p style="color:#7a7570;font-size:0.9rem;">Te contactaremos por WhatsApp para confirmar disponibilidad y coordinar el pago.</p>
+      <button class="btn btn-secondary" style="margin-top:16px;" onclick="resetExperience()">Solicitar otra experiencia</button>
+    </div>`;
+}
+
+function resetExperience() {
+  selectedExp = null;
+  document.querySelectorAll('.exp-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('expFormContainer').className = 'exp-form-container';
+  document.getElementById('expFormContainer').innerHTML = '';
 }
 
 // ============ INIT ============
