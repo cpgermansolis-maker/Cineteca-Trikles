@@ -326,26 +326,41 @@ let config = {};
 let impacto = [];
 let tiposEvento = {};
 
-// ============ GOOGLE SHEETS READER (JSON, soporta comas y acentos) ============
+// ============ GOOGLE SHEETS READER (JSON, robusto) ============
+function getCellValue(cell) {
+  if (!cell) return '';
+  if (cell.f !== undefined && cell.f !== null) return String(cell.f);
+  if (cell.v !== undefined && cell.v !== null) return String(cell.v);
+  return '';
+}
+
 async function fetchSheet(sheetName) {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&headers=1`;
   const res = await fetch(url);
   const text = await res.text();
-  // Google wraps the JSON in: google.visualization.Query.setResponse({...})
   const jsonStr = text.match(/google\.visualization\.Query\.setResponse\((.+)\);?\s*$/s);
   if (!jsonStr) return [];
   const data = JSON.parse(jsonStr[1]);
   const table = data.table;
   if (!table || !table.cols || !table.rows) return [];
 
-  const headers = table.cols.map(c => c.label || '');
-  return table.rows.map(row => {
+  // Try labels from cols first
+  let headers = table.cols.map(c => (c.label || '').trim());
+  let dataRows = table.rows;
+
+  // If labels are empty, use the first data row as headers
+  if (!headers.some(h => h)) {
+    if (table.rows.length < 1) return [];
+    headers = table.rows[0].c ? table.rows[0].c.map(cell => getCellValue(cell).trim()) : [];
+    dataRows = table.rows.slice(1);
+  }
+
+  return dataRows.map(row => {
     const obj = {};
+    if (!row.c) return obj;
     headers.forEach((h, i) => {
       if (!h) return;
-      const cell = row.c && row.c[i];
-      // Use formatted value (f) if available, otherwise raw value (v)
-      obj[h] = cell ? (cell.f !== undefined && cell.f !== null ? cell.f : (cell.v !== undefined && cell.v !== null ? String(cell.v) : '')) : '';
+      obj[h] = getCellValue(row.c[i]);
     });
     return obj;
   }).filter(row => Object.values(row).some(v => v));
