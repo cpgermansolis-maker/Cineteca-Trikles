@@ -11,9 +11,10 @@
 /* ============ RESET & BASE ============ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 :root {
-  --bg: #0a0a0a; --surface: #141414; --card: #1a1a1a; --card-hover: #222;
-  --border: #2a2a2a; --text: #f5f5f5; --text-muted: #888; --text-dim: #555;
-  --accent: #d97706; --accent-light: #fbbf24; --accent-dark: #92400e;
+  --bg: #f5f2ed; --surface: #eeebe5; --card: #1a1a1a; --card-hover: #252525;
+  --border: #e0dbd4; --text: #1a1a1a; --text-muted: #8a7a6a; --text-dim: #a09585;
+  --card-text: #f5f0e8; --card-text-muted: #7a7570; --card-border: #2a2a2a;
+  --accent: #c9a96e; --accent-light: #c9a96e; --accent-dark: #a08545;
   --green: #059669; --red: #dc2626; --purple: #7c3aed;
   --radius: 12px; --radius-sm: 8px;
 }
@@ -22,7 +23,7 @@ body {
   font-family: 'Inter', -apple-system, sans-serif; background: var(--bg);
   color: var(--text); line-height: 1.6; min-height: 100vh;
 }
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--accent-dark); text-decoration: none; }
 img { max-width: 100%; }
 
 /* ============ LAYOUT ============ */
@@ -32,13 +33,14 @@ section { padding: 48px 0; }
 /* ============ HEADER ============ */
 .hero {
   text-align: center; padding: 80px 20px 60px;
-  background: linear-gradient(180deg, #1a1206 0%, var(--bg) 100%);
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
+.hero-logo { max-width: 280px; margin-bottom: 16px; }
 .hero-brand {
   font-family: 'Playfair Display', serif; font-size: clamp(2rem, 6vw, 3.2rem);
-  font-weight: 700; color: var(--accent-light); letter-spacing: 0.02em;
-  margin-bottom: 12px;
+  font-weight: 700; color: var(--text); letter-spacing: 0.02em;
+  margin-bottom: 12px; display: none;
 }
 .hero-tagline {
   font-size: clamp(1rem, 3vw, 1.25rem); color: var(--text-muted);
@@ -61,8 +63,8 @@ section { padding: 48px 0; }
   background: transparent; color: var(--text-muted); cursor: pointer;
   font-size: 0.9rem; font-family: inherit; transition: all 0.2s;
 }
-.nav-tab:hover { border-color: var(--accent); color: var(--text); }
-.nav-tab.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+.nav-tab:hover { border-color: var(--text); color: var(--text); }
+.nav-tab.active { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
 
 /* ============ SECTION TITLES ============ */
 .section-title {
@@ -77,10 +79,10 @@ section { padding: 48px 0; }
   gap: 20px;
 }
 .event-card {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  overflow: hidden; cursor: pointer; transition: all 0.25s;
+  background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius);
+  overflow: hidden; cursor: pointer; transition: all 0.25s; color: var(--card-text);
 }
-.event-card:hover { background: var(--card-hover); transform: translateY(-2px); border-color: var(--accent-dark); }
+.event-card:hover { background: var(--card-hover); transform: translateY(-2px); border-color: #333; }
 .event-card-img {
   width: 100%; height: 180px; object-fit: cover; display: block;
 }
@@ -92,15 +94,15 @@ section { padding: 48px 0; }
 }
 .event-card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
 .event-card-desc {
-  font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;
+  font-size: 0.85rem; color: var(--card-text-muted); margin-bottom: 12px;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .event-card-footer {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 20px; border-top: 1px solid var(--border); font-size: 0.85rem;
+  padding: 14px 20px; border-top: 1px solid var(--card-border); font-size: 0.85rem;
 }
 .event-date { color: var(--accent-light); font-weight: 600; }
-.event-spots { color: var(--text-muted); }
+.event-spots { color: var(--card-text-muted); }
 .event-spots.low { color: var(--red); font-weight: 600; }
 .event-price { font-weight: 700; color: var(--green); }
 
@@ -112,40 +114,40 @@ section { padding: 48px 0; }
 }
 .modal-overlay.open { display: flex; }
 .modal {
-  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius);
   max-width: 560px; width: 100%; padding: 32px; position: relative;
-  animation: slideUp 0.3s ease;
+  animation: slideUp 0.3s ease; color: #f5f0e8;
 }
 @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
 .modal-close {
   position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
-  border-radius: 50%; border: 1px solid var(--border); background: var(--card);
-  color: var(--text); cursor: pointer; font-size: 1.1rem; display: flex;
+  border-radius: 50%; border: 1px solid #333; background: #252525;
+  color: #f5f0e8; cursor: pointer; font-size: 1.1rem; display: flex;
   align-items: center; justify-content: center; transition: all 0.2s;
 }
-.modal-close:hover { background: var(--accent); color: #000; }
+.modal-close:hover { background: var(--accent); color: #1a1a1a; }
 .modal h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 6px; }
 .modal-type { margin-bottom: 16px; }
 .modal-meta {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  margin-bottom: 20px; padding: 16px; background: var(--card);
+  margin-bottom: 20px; padding: 16px; background: #111;
   border-radius: var(--radius-sm);
 }
-.meta-item label { display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.meta-item label { display: block; font-size: 0.75rem; color: #7a7570; text-transform: uppercase; letter-spacing: 0.05em; }
 .meta-item span { font-weight: 600; font-size: 0.95rem; }
-.modal-desc { color: var(--text-muted); margin-bottom: 24px; font-size: 0.95rem; line-height: 1.7; }
+.modal-desc { color: #a09890; margin-bottom: 24px; font-size: 0.95rem; line-height: 1.7; }
 
 /* ============ FORM ============ */
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-muted); }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #7a7570; }
 .form-input, .form-textarea {
-  width: 100%; padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); color: var(--text); font-family: inherit;
+  width: 100%; padding: 12px 16px; background: #111; border: 1px solid #333;
+  border-radius: var(--radius-sm); color: #f5f0e8; font-family: inherit;
   font-size: 0.95rem; transition: border-color 0.2s;
 }
 .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
 .form-textarea { resize: vertical; min-height: 80px; }
-.form-input::placeholder, .form-textarea::placeholder { color: var(--text-dim); }
+.form-input::placeholder, .form-textarea::placeholder { color: #555; }
 select.form-input { appearance: none; cursor: pointer; }
 
 .btn {
@@ -154,16 +156,16 @@ select.form-input { appearance: none; cursor: pointer; }
   font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer;
   transition: all 0.2s; width: 100%;
 }
-.btn-primary { background: var(--accent); color: #000; }
-.btn-primary:hover { background: var(--accent-light); }
+.btn-primary { background: var(--accent); color: #1a1a1a; }
+.btn-primary:hover { background: #d4b87a; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-secondary { background: var(--card); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary { background: #252525; color: #f5f0e8; border: 1px solid #333; }
 .btn-secondary:hover { border-color: var(--accent); }
 
 /* ============ QR CONFIRMATION ============ */
 .confirmation { text-align: center; }
 .confirmation h2 { color: var(--green); margin-bottom: 8px; }
-.confirmation p { color: var(--text-muted); margin-bottom: 20px; }
+.confirmation p { color: #a09890; margin-bottom: 20px; }
 .qr-container {
   display: inline-block; padding: 16px; background: #fff; border-radius: var(--radius);
   margin-bottom: 16px;
@@ -172,19 +174,19 @@ select.form-input { appearance: none; cursor: pointer; }
   font-family: monospace; font-size: 1.3rem; font-weight: 700;
   color: var(--accent-light); margin-bottom: 8px;
 }
-.qr-instructions { font-size: 0.85rem; color: var(--text-dim); margin-top: 12px; }
+.qr-instructions { font-size: 0.85rem; color: #7a7570; margin-top: 12px; }
 
 /* ============ IMPACT ============ */
 .impact-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
 .impact-card {
-  background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 20px; border-left: 4px solid var(--green);
+  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius);
+  padding: 20px; border-left: 4px solid var(--green); color: #f5f0e8;
 }
 .impact-category {
   font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--green); font-weight: 600; margin-bottom: 8px;
 }
-.impact-desc { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px; }
+.impact-desc { font-size: 0.9rem; color: #7a7570; margin-bottom: 8px; }
 .impact-beneficiary { font-size: 0.85rem; font-weight: 600; }
 .impact-amount { color: var(--accent-light); font-weight: 700; margin-top: 4px; }
 
@@ -193,12 +195,12 @@ footer {
   text-align: center; padding: 40px 20px; border-top: 1px solid var(--border);
   color: var(--text-dim); font-size: 0.85rem;
 }
-footer .brand-small { color: var(--accent); font-weight: 600; }
+footer .brand-small { color: var(--text); font-weight: 600; }
 
 /* ============ LOADING ============ */
 .loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 .spinner {
-  width: 32px; height: 32px; border: 3px solid var(--border);
+  width: 32px; height: 32px; border: 3px solid #d4cec6;
   border-top-color: var(--accent); border-radius: 50%;
   animation: spin 0.8s linear infinite; margin: 0 auto 16px;
 }
@@ -226,6 +228,7 @@ footer .brand-small { color: var(--accent); font-weight: 600; }
 
 <!-- ==================== HERO ==================== -->
 <header class="hero">
+  <img class="hero-logo" id="heroLogo" src="" alt="Cineteca Trikles - La casa del arte">
   <div class="hero-brand">Cineteca Trikles</div>
   <div class="hero-tagline">Aquí el cine se vive en comunidad en la casa del arte</div>
   <div class="hero-schedule" id="heroSchedule">Cargando horario...</div>
@@ -271,8 +274,8 @@ footer .brand-small { color: var(--accent); font-weight: 600; }
       <h2 class="section-title">Contacto</h2>
       <p class="section-subtitle">Escríbenos o visítanos</p>
       <div style="max-width: 480px;">
-        <div style="background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px;">
-          <div id="contactInfo" style="color: var(--text-muted);">Cargando...</div>
+        <div style="background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 24px;">
+          <div id="contactInfo" style="color: #a09890;">Cargando...</div>
         </div>
       </div>
     </div>
@@ -323,58 +326,29 @@ let config = {};
 let impacto = [];
 let tiposEvento = {};
 
-// ============ GOOGLE SHEETS READER ============
+// ============ GOOGLE SHEETS READER (JSON, soporta comas y acentos) ============
 async function fetchSheet(sheetName) {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
   const res = await fetch(url);
   const text = await res.text();
-  return parseCSV(text);
-}
+  // Google wraps the JSON in: google.visualization.Query.setResponse({...})
+  const jsonStr = text.match(/google\.visualization\.Query\.setResponse\((.+)\);?\s*$/s);
+  if (!jsonStr) return [];
+  const data = JSON.parse(jsonStr[1]);
+  const table = data.table;
+  if (!table || !table.cols || !table.rows) return [];
 
-function parseCSV(text) {
-  const rows = [];
-  let current = '';
-  let inQuote = false;
-  const lines = [];
-
-  // Split respecting quoted newlines
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (ch === '"') {
-      if (inQuote && text[i + 1] === '"') { current += '"'; i++; }
-      else { inQuote = !inQuote; }
-    } else if (ch === '\n' && !inQuote) {
-      lines.push(current); current = '';
-    } else if (ch === '\r' && !inQuote) {
-      // skip
-    } else { current += ch; }
-  }
-  if (current) lines.push(current);
-
-  // Parse each line into fields
-  for (const line of lines) {
-    const fields = [];
-    let field = ''; let fInQuote = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') {
-        if (fInQuote && line[i + 1] === '"') { field += '"'; i++; }
-        else { fInQuote = !fInQuote; }
-      } else if (ch === ',' && !fInQuote) {
-        fields.push(field.trim()); field = '';
-      } else { field += ch; }
-    }
-    fields.push(field.trim());
-    rows.push(fields);
-  }
-
-  if (rows.length < 2) return [];
-  const headers = rows[0];
-  return rows.slice(1).filter(r => r.some(c => c)).map(row => {
+  const headers = table.cols.map(c => c.label || '');
+  return table.rows.map(row => {
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = row[i] || ''; });
+    headers.forEach((h, i) => {
+      if (!h) return;
+      const cell = row.c && row.c[i];
+      // Use formatted value (f) if available, otherwise raw value (v)
+      obj[h] = cell ? (cell.f !== undefined && cell.f !== null ? cell.f : (cell.v !== undefined && cell.v !== null ? String(cell.v) : '')) : '';
+    });
     return obj;
-  });
+  }).filter(row => Object.values(row).some(v => v));
 }
 
 // ============ TYPE COLORS ============
@@ -435,6 +409,12 @@ function renderConfig() {
   if (config.mensaje_bienvenida) {
     document.querySelector('.hero-tagline').textContent = config.mensaje_bienvenida;
   }
+  // Logo from Config or Google Drive
+  if (config.logo_url) {
+    const logoEl = document.getElementById('heroLogo');
+    logoEl.src = getImageUrl(config.logo_url);
+    logoEl.style.display = 'block';
+  }
 
   // Contact info
   let html = '';
@@ -442,7 +422,7 @@ function renderConfig() {
   if (config.horario) html += `<p style="margin-bottom:12px"><strong>🕐 Horario:</strong><br>${config.horario}</p>`;
   if (config.whatsapp_contacto) html += `<p style="margin-bottom:12px"><strong>💬 WhatsApp:</strong><br><a href="https://wa.me/${config.whatsapp_contacto.replace(/[^0-9]/g,'')}">${config.whatsapp_contacto}</a></p>`;
   if (config.email_contacto) html += `<p style="margin-bottom:12px"><strong>✉️ Email:</strong><br><a href="mailto:${config.email_contacto}">${config.email_contacto}</a></p>`;
-  if (config.causa_actual) html += `<p style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border)"><strong>🌱 Causa del mes:</strong><br>${config.causa_actual}</p>`;
+  if (config.causa_actual) html += `<p style="margin-top:20px; padding-top:16px; border-top:1px solid #333"><strong>🌱 Causa del mes:</strong><br>${config.causa_actual}</p>`;
   document.getElementById('contactInfo').innerHTML = html || 'Sin información de contacto.';
 }
 
