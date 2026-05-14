@@ -1073,7 +1073,8 @@ async function lookupReserva(event) {
   try {
     const reservas = await fetchSheet('Reservas');
     const misReservas = reservas.filter(r =>
-      (r.Email || '').trim().toLowerCase() === email
+      (r.Email || '').trim().toLowerCase() === email ||
+      (r.Telefono || '').trim().replace(/\D/g, '').slice(-10) === email.replace(/\D/g, '').slice(-10) && email.includes('@') === false
     );
 
     if (!misReservas.length) {
@@ -1098,19 +1099,22 @@ async function lookupReserva(event) {
       misReservas.map((r, i) => {
         const estado = (r.Estado || 'Pendiente').trim();
         const estadoClass = estado.toLowerCase() === 'confirmada' ? 'confirmada' : 'pendiente';
-        const codigo = r.Codigo_Confirmacion || '—';
+        const codigo = r.Codigo_Confirmacion || r['Codigo_Confirmacion'] || '—';
         const fecha = formatDate(r.Fecha_Reserva);
+        const nombre = r.Nombre_Miembro || r.Nombre || '';
+        const titulo = r.Titulo_Evento || 'Evento';
+        const cantidad = r.Cantidad_Personas || 1;
 
         return `
           <div class="lookup-card">
             <div class="lookup-card-header">
-              <span class="lookup-card-title">${esc(r.Titulo_Evento || 'Evento')}</span>
+              <span class="lookup-card-title">${esc(titulo)}</span>
               <span class="lookup-card-status ${estadoClass}">${esc(estado)}</span>
             </div>
             <div class="lookup-card-meta">
               📅 Reservado el: ${fecha}<br>
-              👤 ${esc(r.Nombre)}<br>
-              👥 ${r.Cantidad_Personas || 1} persona${parseInt(r.Cantidad_Personas) > 1 ? 's' : ''}
+              👤 ${esc(nombre)}<br>
+              👥 ${cantidad} persona${parseInt(cantidad) > 1 ? 's' : ''}
             </div>
             ${codigo !== '—' ? `
               <div class="lookup-qr-wrap">
@@ -1130,7 +1134,7 @@ async function lookupReserva(event) {
         if (!qrBox) return;
         qrBox.innerHTML = '';
         new QRCode(qrBox, {
-          text: `TRIKLES|${codigo}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}`,
+          text: `TRIKLES|${codigo}|${r.ID_Evento || ''}|${r.Nombre_Miembro || r.Nombre || ''}|${r.Cantidad_Personas || 1}`,
           width: 180, height: 180,
           colorDark: '#1a1a1a', colorLight: '#ffffff',
           correctLevel: QRCode.CorrectLevel.M,
