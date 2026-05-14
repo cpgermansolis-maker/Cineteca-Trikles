@@ -18,6 +18,35 @@
   --green: #059669; --red: #dc2626; --purple: #7c3aed;
   --radius: 12px; --radius-sm: 8px;
 }
+/* ============ LOOKUP BUTTON ============ */
+.hero-lookup {
+  display: inline-block; margin-top: 16px;
+}
+.hero-lookup button {
+  padding: 10px 24px; border-radius: 20px; border: 1px solid var(--accent);
+  background: transparent; color: var(--accent-dark); cursor: pointer;
+  font-family: inherit; font-size: 0.9rem; font-weight: 600; transition: all 0.2s;
+}
+.hero-lookup button:hover { background: var(--accent); color: #1a1a1a; }
+
+/* ============ LOOKUP MODAL ============ */
+.lookup-results { margin-top: 24px; }
+.lookup-card {
+  background: #111; border: 1px solid #2a2a2a; border-radius: var(--radius-sm);
+  padding: 20px; margin-bottom: 16px;
+}
+.lookup-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.lookup-card-title { font-weight: 700; font-size: 1.05rem; }
+.lookup-card-status {
+  padding: 3px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.lookup-card-status.confirmada { background: #064e3b; color: #6ee7b7; }
+.lookup-card-status.pendiente { background: #5c3a0e; color: #fcd34d; }
+.lookup-card-meta { font-size: 0.85rem; color: #7a7570; margin-bottom: 16px; line-height: 1.8; }
+.lookup-qr-wrap { text-align: center; }
+.lookup-qr-code { font-family: monospace; font-size: 1.1rem; font-weight: 700; color: var(--accent-light); margin-bottom: 8px; }
+.lookup-qr-box { display: inline-block; padding: 12px; background: #fff; border-radius: var(--radius-sm); }
 html { scroll-behavior: smooth; }
 body {
   font-family: 'Inter', -apple-system, sans-serif; background: var(--bg);
@@ -274,6 +303,9 @@ footer .brand-small { color: var(--text); font-weight: 600; }
   <div class="hero-brand">Cineteca Trikles</div>
   <div class="hero-tagline">Aquí el cine se vive en comunidad en la casa del arte</div>
   <div class="hero-schedule" id="heroSchedule">Cargando horario...</div>
+  <div class="hero-lookup">
+    <button onclick="openModal('lookupModal')">🔍 Consultar mi reserva</button>
+  </div>
 </header>
 
 <!-- ==================== NAV ==================== -->
@@ -384,6 +416,25 @@ footer .brand-small { color: var(--text); font-weight: 600; }
   <div class="modal">
     <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
     <div id="confirmContent" class="confirmation"></div>
+  </div>
+</div>
+
+<!-- ==================== MODAL: CONSULTAR RESERVA ==================== -->
+<div class="modal-overlay" id="lookupModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('lookupModal')">&times;</button>
+    <div id="lookupContent">
+      <h2 style="margin-bottom: 6px;">🔍 Consultar mi reserva</h2>
+      <p style="color: #7a7570; margin-bottom: 24px; font-size: 0.9rem;">Ingresa tu email para recuperar tus reservas y códigos QR</p>
+      <form onsubmit="lookupReserva(event)">
+        <div class="form-group">
+          <label>Email con el que reservaste *</label>
+          <input type="email" class="form-input" id="lookupEmail" required placeholder="tu@email.com">
+        </div>
+        <button type="submit" class="btn btn-primary" id="btnLookup">Buscar mis reservas</button>
+      </form>
+      <div class="lookup-results" id="lookupResults"></div>
+    </div>
   </div>
 </div>
 
@@ -632,8 +683,8 @@ function openReserveForm(index) {
         <input type="tel" class="form-input" name="telefono" required placeholder="+52 55 1234 5678">
       </div>
       <div class="form-group">
-        <label>Email</label>
-        <input type="email" class="form-input" name="email" placeholder="tu@email.com">
+        <label>Email *</label>
+        <input type="email" class="form-input" name="email" required placeholder="tu@email.com">
       </div>
       <div class="form-group">
         <label>¿Cuántas personas? *</label>
@@ -1000,6 +1051,99 @@ function resetExperience() {
   document.querySelectorAll('.exp-card').forEach(c => c.classList.remove('selected'));
   document.getElementById('expFormContainer').className = 'exp-form-container';
   document.getElementById('expFormContainer').innerHTML = '';
+}
+
+// ============ LOOKUP RESERVAS ============
+async function lookupReserva(event) {
+  event.preventDefault();
+  const btn = document.getElementById('btnLookup');
+  const resultsDiv = document.getElementById('lookupResults');
+  const email = document.getElementById('lookupEmail').value.trim().toLowerCase();
+
+  if (!email) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Buscando...';
+  resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Buscando tus reservas...</div>';
+
+  try {
+    const reservas = await fetchSheet('Reservas');
+    const misReservas = reservas.filter(r =>
+      (r.Email || '').trim().toLowerCase() === email
+    );
+
+    if (!misReservas.length) {
+      resultsDiv.innerHTML = `
+        <div style="text-align:center; padding:24px 0; color:#7a7570;">
+          <div style="font-size:2rem; margin-bottom:8px;">😕</div>
+          <p>No encontramos reservas con ese email.</p>
+          <p style="font-size:0.85rem; margin-top:8px;">Verifica que sea el mismo email que usaste al reservar.</p>
+        </div>`;
+      btn.disabled = false;
+      btn.textContent = 'Buscar mis reservas';
+      return;
+    }
+
+    // Sort by date descending (most recent first)
+    misReservas.sort((a, b) => (b.Fecha_Reserva || '').localeCompare(a.Fecha_Reserva || ''));
+
+    resultsDiv.innerHTML = `
+      <p style="color:#7a7570; font-size:0.85rem; margin-bottom:16px;">
+        Se encontraron <strong style="color:#f5f0e8;">${misReservas.length}</strong> reserva${misReservas.length > 1 ? 's' : ''}
+      </p>` +
+      misReservas.map((r, i) => {
+        const estado = (r.Estado || 'Pendiente').trim();
+        const estadoClass = estado.toLowerCase() === 'confirmada' ? 'confirmada' : 'pendiente';
+        const codigo = r.Codigo_Confirmacion || '—';
+        const fecha = formatDate(r.Fecha_Reserva);
+
+        return `
+          <div class="lookup-card">
+            <div class="lookup-card-header">
+              <span class="lookup-card-title">${esc(r.Titulo_Evento || 'Evento')}</span>
+              <span class="lookup-card-status ${estadoClass}">${esc(estado)}</span>
+            </div>
+            <div class="lookup-card-meta">
+              📅 Reservado el: ${fecha}<br>
+              👤 ${esc(r.Nombre)}<br>
+              👥 ${r.Cantidad_Personas || 1} persona${parseInt(r.Cantidad_Personas) > 1 ? 's' : ''}
+            </div>
+            ${codigo !== '—' ? `
+              <div class="lookup-qr-wrap">
+                <div class="lookup-qr-code">${esc(codigo)}</div>
+                <div class="lookup-qr-box" id="lookupQR_${i}"></div>
+                <p style="font-size:0.8rem; color:#7a7570; margin-top:8px;">Muestra este QR al llegar</p>
+              </div>` : ''}
+          </div>`;
+      }).join('');
+
+    // Generate QR codes for each reservation
+    setTimeout(() => {
+      misReservas.forEach((r, i) => {
+        const codigo = r.Codigo_Confirmacion;
+        if (!codigo) return;
+        const qrBox = document.getElementById(`lookupQR_${i}`);
+        if (!qrBox) return;
+        qrBox.innerHTML = '';
+        new QRCode(qrBox, {
+          text: `TRIKLES|${codigo}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}`,
+          width: 180, height: 180,
+          colorDark: '#1a1a1a', colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M,
+        });
+      });
+    }, 100);
+
+  } catch (err) {
+    console.error('Error buscando reservas:', err);
+    resultsDiv.innerHTML = `
+      <div style="text-align:center; padding:24px 0; color:#dc2626;">
+        <p>Error al buscar. Intenta de nuevo.</p>
+      </div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Buscar mis reservas';
 }
 
 // ============ INIT ============
