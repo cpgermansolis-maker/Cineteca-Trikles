@@ -47,6 +47,8 @@
 .lookup-qr-wrap { text-align: center; }
 .lookup-qr-code { font-family: monospace; font-size: 1.1rem; font-weight: 700; color: var(--accent-light); margin-bottom: 8px; }
 .lookup-qr-box { display: inline-block; padding: 12px; background: #fff; border-radius: var(--radius-sm); }
+.lookup-qr-box img { display: none !important; }
+.lookup-qr-box canvas { display: block !important; }
 html { scroll-behavior: smooth; }
 body {
   font-family: 'Inter', -apple-system, sans-serif; background: var(--bg);
@@ -199,6 +201,8 @@ select.form-input { appearance: none; cursor: pointer; }
   display: inline-block; padding: 16px; background: #fff; border-radius: var(--radius);
   margin-bottom: 16px;
 }
+.qr-container img { display: none !important; }
+.qr-container canvas { display: block !important; }
 .qr-code-text {
   font-family: monospace; font-size: 1.3rem; font-weight: 700;
   color: var(--accent-light); margin-bottom: 8px;
