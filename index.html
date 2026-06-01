@@ -3,10 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Cineteca Trikles</title>
+<title>Cineteca Trikles · La casa del arte</title>
+<meta name="description" content="Cineteca Trikles: el cine como excusa para encontrarnos. Cartelera, funciones privadas y eventos culturales en la casa del arte.">
+<meta name="theme-color" content="#1a1a1a">
+
+<!-- ====== REDES / COMPARTIR (Open Graph + Twitter) ====== -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cineteca Trikles">
+<meta property="og:title" content="Cineteca Trikles · La casa del arte">
+<meta property="og:description" content="El cine como excusa para encontrarnos. Reserva tu lugar en la cartelera o crea tu propia experiencia.">
+<meta property="og:image" content="logo.png.jpeg">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Cineteca Trikles · La casa del arte">
+<meta name="twitter:description" content="El cine como excusa para encontrarnos.">
+<meta name="twitter:image" content="logo.png.jpeg">
+
+<!-- ====== PWA (instalable) ====== -->
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="logo.png.jpeg">
+<link rel="icon" href="logo.png.jpeg">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
 /* ============ RESET & BASE ============ */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -18,10 +38,17 @@
   --green: #059669; --red: #dc2626; --purple: #7c3aed;
   --radius: 12px; --radius-sm: 8px;
 }
-/* ============ LOOKUP BUTTON ============ */
-.hero-lookup {
-  display: inline-block; margin-top: 16px;
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', -apple-system, sans-serif; background: var(--bg);
+  color: var(--text); line-height: 1.6; min-height: 100vh;
 }
+a { color: var(--accent-dark); text-decoration: none; }
+img { max-width: 100%; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+
+/* ============ LOOKUP BUTTON ============ */
+.hero-lookup { display: inline-block; margin-top: 16px; }
 .hero-lookup button {
   padding: 10px 24px; border-radius: 20px; border: 1px solid var(--accent);
   background: transparent; color: var(--accent-dark); cursor: pointer;
@@ -35,11 +62,11 @@
   background: #111; border: 1px solid #2a2a2a; border-radius: var(--radius-sm);
   padding: 20px; margin-bottom: 16px;
 }
-.lookup-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.lookup-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 12px; }
 .lookup-card-title { font-weight: 700; font-size: 1.05rem; }
 .lookup-card-status {
   padding: 3px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.05em;
+  text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
 }
 .lookup-card-status.confirmada { background: #064e3b; color: #6ee7b7; }
 .lookup-card-status.pendiente { background: #5c3a0e; color: #fcd34d; }
@@ -49,13 +76,6 @@
 .lookup-qr-box { display: inline-block; padding: 12px; background: #fff; border-radius: var(--radius-sm); }
 .lookup-qr-box img { display: none !important; }
 .lookup-qr-box canvas { display: block !important; }
-html { scroll-behavior: smooth; }
-body {
-  font-family: 'Inter', -apple-system, sans-serif; background: var(--bg);
-  color: var(--text); line-height: 1.6; min-height: 100vh;
-}
-a { color: var(--accent-dark); text-decoration: none; }
-img { max-width: 100%; }
 
 /* ============ LAYOUT ============ */
 .container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
@@ -64,10 +84,9 @@ section { padding: 48px 0; }
 /* ============ HEADER ============ */
 .hero {
   text-align: center; padding: 80px 20px 60px;
-  background: var(--bg);
-  border-bottom: 1px solid var(--border);
+  background: var(--bg); border-bottom: 1px solid var(--border);
 }
-.hero-logo { max-width: 280px; margin: 0 auto 16px !important; display: block; text-align: center; }
+.hero-logo { max-width: 280px; margin: 0 auto 16px !important; display: block; }
 .hero-brand {
   font-family: 'Playfair Display', serif; font-size: clamp(2rem, 6vw, 3.2rem);
   font-weight: 700; color: var(--text); letter-spacing: 0.02em;
@@ -87,7 +106,7 @@ section { padding: 48px 0; }
 .nav-tabs {
   display: flex; justify-content: center; gap: 8px; padding: 16px 20px;
   background: var(--surface); border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 100;
+  position: sticky; top: 0; z-index: 100; flex-wrap: wrap;
 }
 .nav-tab {
   padding: 8px 20px; border-radius: 20px; border: 1px solid var(--border);
@@ -98,26 +117,39 @@ section { padding: 48px 0; }
 .nav-tab.active { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
 
 /* ============ SECTION TITLES ============ */
-.section-title {
-  font-family: 'Playfair Display', serif; font-size: 1.8rem;
-  margin-bottom: 8px; color: var(--text);
+.section-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 8px; color: var(--text); }
+.section-subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 0.95rem; }
+
+/* ============ FILTER BAR ============ */
+.filter-bar { margin-bottom: 28px; }
+.search-wrap { position: relative; margin-bottom: 14px; }
+.search-input {
+  width: 100%; padding: 12px 16px 12px 42px; border-radius: 24px;
+  border: 1px solid var(--border); background: #fff; color: var(--text);
+  font-family: inherit; font-size: 0.95rem; transition: border-color 0.2s;
 }
-.section-subtitle { color: var(--text-muted); margin-bottom: 32px; font-size: 0.95rem; }
+.search-input:focus { outline: none; border-color: var(--accent); }
+.search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-dim); }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  padding: 6px 16px; border-radius: 18px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  font-family: inherit; font-size: 0.82rem; font-weight: 500; transition: all 0.2s;
+}
+.chip:hover { border-color: var(--text); color: var(--text); }
+.chip.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
 
 /* ============ EVENT CARDS ============ */
-.events-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 20px;
-}
+.events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
 .event-card {
   background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius);
   overflow: hidden; cursor: pointer; transition: all 0.25s; color: var(--card-text);
+  display: flex; flex-direction: column; text-align: left; width: 100%;
+  font-family: inherit; padding: 0;
 }
 .event-card:hover { background: var(--card-hover); transform: translateY(-2px); border-color: #333; }
-.event-card-img {
-  width: 100%; height: 180px; object-fit: cover; display: block;
-}
-.event-card-header { padding: 20px 20px 12px; }
+.event-card-img { width: 100%; height: 180px; object-fit: cover; display: block; background: #111; }
+.event-card-header { padding: 20px 20px 12px; flex: 1; }
 .event-type-badge {
   display: inline-block; padding: 3px 10px; border-radius: 12px;
   font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
@@ -134,14 +166,14 @@ section { padding: 48px 0; }
 }
 .event-date { color: var(--accent-light); font-weight: 600; }
 .event-spots { color: var(--card-text-muted); }
-.event-spots.low { color: var(--red); font-weight: 600; }
-.event-price { font-weight: 700; color: var(--green); }
+.event-spots.low { color: #fbbf24; font-weight: 600; }
+.event-spots.full { color: var(--red); font-weight: 600; }
 
 /* ============ MODAL ============ */
 .modal-overlay {
-  display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.85); z-index: 200; justify-content: center;
-  align-items: flex-start; padding: 40px 16px; overflow-y: auto;
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
+  z-index: 200; justify-content: center; align-items: flex-start;
+  padding: 40px 16px; overflow-y: auto;
 }
 .modal-overlay.open { display: flex; }
 .modal {
@@ -161,16 +193,17 @@ section { padding: 48px 0; }
 .modal-type { margin-bottom: 16px; }
 .modal-meta {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  margin-bottom: 20px; padding: 16px; background: #111;
-  border-radius: var(--radius-sm);
+  margin-bottom: 20px; padding: 16px; background: #111; border-radius: var(--radius-sm);
 }
 .meta-item label { display: block; font-size: 0.75rem; color: #7a7570; text-transform: uppercase; letter-spacing: 0.05em; }
 .meta-item span { font-weight: 600; font-size: 0.95rem; }
-.modal-desc { color: #a09890; margin-bottom: 24px; font-size: 0.95rem; line-height: 1.7; }
+.modal-desc { color: #a09890; margin-bottom: 20px; font-size: 0.95rem; line-height: 1.7; }
+.modal-actions { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+.modal-actions .btn-icon { flex: 1; min-width: 120px; }
 
 /* ============ FORM ============ */
 .form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #7a7570; }
+.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #b0a89e; }
 .form-input, .form-textarea {
   width: 100%; padding: 12px 16px; background: #111; border: 1px solid #333;
   border-radius: var(--radius-sm); color: #f5f0e8; font-family: inherit;
@@ -192,21 +225,16 @@ select.form-input { appearance: none; cursor: pointer; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-secondary { background: #252525; color: #f5f0e8; border: 1px solid #333; }
 .btn-secondary:hover { border-color: var(--accent); }
+.btn-icon { padding: 10px 16px; font-size: 0.85rem; font-weight: 600; width: auto; }
 
 /* ============ QR CONFIRMATION ============ */
 .confirmation { text-align: center; }
 .confirmation h2 { color: var(--green); margin-bottom: 8px; }
 .confirmation p { color: #a09890; margin-bottom: 20px; }
-.qr-container {
-  display: inline-block; padding: 16px; background: #fff; border-radius: var(--radius);
-  margin-bottom: 16px;
-}
+.qr-container { display: inline-block; padding: 16px; background: #fff; border-radius: var(--radius); margin-bottom: 16px; }
 .qr-container img { display: none !important; }
 .qr-container canvas { display: block !important; }
-.qr-code-text {
-  font-family: monospace; font-size: 1.3rem; font-weight: 700;
-  color: var(--accent-light); margin-bottom: 8px;
-}
+.qr-code-text { font-family: monospace; font-size: 1.3rem; font-weight: 700; color: var(--accent-light); margin-bottom: 8px; }
 .qr-instructions { font-size: 0.85rem; color: #7a7570; margin-top: 12px; }
 
 /* ============ IMPACT ============ */
@@ -215,33 +243,40 @@ select.form-input { appearance: none; cursor: pointer; }
   background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius);
   padding: 20px; border-left: 4px solid var(--green); color: #f5f0e8;
 }
-.impact-category {
-  font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em;
-  color: var(--green); font-weight: 600; margin-bottom: 8px;
-}
+.impact-category { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--green); font-weight: 600; margin-bottom: 8px; }
 .impact-desc { font-size: 0.9rem; color: #7a7570; margin-bottom: 8px; }
 .impact-beneficiary { font-size: 0.85rem; font-weight: 600; }
 .impact-amount { color: var(--accent-light); font-weight: 700; margin-top: 4px; }
 
 /* ============ FOOTER ============ */
-footer {
-  text-align: center; padding: 40px 20px; border-top: 1px solid var(--border);
-  color: var(--text-dim); font-size: 0.85rem;
-}
+footer { text-align: center; padding: 40px 20px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
 footer .brand-small { color: var(--text); font-weight: 600; }
 
-/* ============ LOADING ============ */
-.loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
-.spinner {
-  width: 32px; height: 32px; border: 3px solid #d4cec6;
-  border-top-color: var(--accent); border-radius: 50%;
-  animation: spin 0.8s linear infinite; margin: 0 auto 16px;
-}
+/* ============ LOADING / SKELETON ============ */
+.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+.skeleton-card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius); overflow: hidden; height: 320px; }
+.skeleton-img { height: 180px; background: linear-gradient(90deg,#222 25%,#2c2c2c 37%,#222 63%); background-size: 400% 100%; animation: shimmer 1.4s infinite; }
+.skeleton-line { height: 12px; margin: 16px 20px 0; border-radius: 6px; background: linear-gradient(90deg,#222 25%,#2c2c2c 37%,#222 63%); background-size: 400% 100%; animation: shimmer 1.4s infinite; }
+.skeleton-line.short { width: 50%; }
+@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
+.spinner { width: 32px; height: 32px; border: 3px solid #d4cec6; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
+.loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 
-/* ============ EMPTY STATE ============ */
-.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+/* ============ EMPTY / ERROR STATE ============ */
+.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); grid-column: 1 / -1; }
 .empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+
+/* ============ TOAST ============ */
+.toast {
+  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(120%);
+  background: #1a1a1a; color: #f5f0e8; border: 1px solid #333; border-radius: 24px;
+  padding: 12px 22px; font-size: 0.9rem; z-index: 400; box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  transition: transform 0.3s ease; max-width: 90vw; text-align: center;
+}
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast.error { border-color: var(--red); }
+.toast.success { border-color: var(--green); }
 
 /* ============ RESPONSIVE ============ */
 @media (max-width: 600px) {
@@ -251,13 +286,16 @@ footer .brand-small { color: var(--text); font-weight: 600; }
   .modal-meta { grid-template-columns: 1fr; }
   section { padding: 32px 0; }
 }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+}
 
 /* ============ EXPERIENCE CARDS ============ */
 .exp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
 .exp-card {
   background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius);
   padding: 28px 24px; cursor: pointer; transition: all 0.25s; color: #f5f0e8;
-  text-align: center; position: relative; overflow: hidden;
+  text-align: center; position: relative; overflow: hidden; font-family: inherit; width: 100%;
 }
 .exp-card:hover { transform: translateY(-3px); border-color: var(--accent); }
 .exp-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
@@ -280,23 +318,16 @@ footer .brand-small { color: var(--text); font-weight: 600; }
 .exp-form-container.visible { display: block; animation: slideUp 0.3s ease; }
 .exp-form-title { font-family: 'Playfair Display', serif; font-size: 1.3rem; margin-bottom: 6px; }
 .exp-form-subtitle { color: #7a7570; font-size: 0.9rem; margin-bottom: 24px; }
-
-.budget-box {
-  background: #111; border: 1px solid #2a2a2a; border-radius: var(--radius-sm);
-  padding: 16px; margin: 20px 0; text-align: center;
-}
+.budget-box { background: #111; border: 1px solid #2a2a2a; border-radius: var(--radius-sm); padding: 16px; margin: 20px 0; text-align: center; }
 .budget-label { font-size: 0.8rem; color: #7a7570; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
 .budget-total { font-size: 2rem; font-weight: 800; color: var(--accent); }
 .budget-breakdown { font-size: 0.85rem; color: #7a7570; margin-top: 4px; }
-
-.public-notice {
-  background: #1a1510; border: 1px solid #3a2a10; border-radius: var(--radius-sm);
-  padding: 12px 16px; font-size: 0.85rem; color: #d4b06a; margin-bottom: 16px;
-}
+.public-notice { background: #1a1510; border: 1px solid #3a2a10; border-radius: var(--radius-sm); padding: 12px 16px; font-size: 0.85rem; color: #d4b06a; margin-bottom: 16px; }
 
 /* ============ HIDDEN SECTIONS ============ */
 .page { display: none; }
 .page.active { display: block; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 </style>
 </head>
 <body>
@@ -305,19 +336,19 @@ footer .brand-small { color: var(--text); font-weight: 600; }
 <header class="hero">
   <img class="hero-logo" id="heroLogo" src="logo.png.jpeg" alt="Cineteca Trikles - La casa del arte">
   <div class="hero-brand">Cineteca Trikles</div>
-  <div class="hero-tagline">Aquí el cine se vive en comunidad en la casa del arte</div>
+  <p class="hero-tagline">Aquí el cine se vive en comunidad en la casa del arte</p>
   <div class="hero-schedule" id="heroSchedule">Cargando horario...</div>
   <div class="hero-lookup">
-    <button onclick="openModal('lookupModal')">🔍 Consultar mi reserva</button>
+    <button type="button" onclick="openModal('lookupModal')">🔍 Consultar mi reserva</button>
   </div>
 </header>
 
 <!-- ==================== NAV ==================== -->
-<nav class="nav-tabs">
-  <button class="nav-tab active" onclick="showPage('cartelera')">Cartelera</button>
-  <button class="nav-tab" onclick="showPage('experiencias')">Experiencias</button>
-  <button class="nav-tab" onclick="showPage('impacto')">Impacto</button>
-  <button class="nav-tab" onclick="showPage('contacto')">Contacto</button>
+<nav class="nav-tabs" role="tablist" aria-label="Secciones">
+  <button class="nav-tab active" role="tab" aria-selected="true" onclick="showPage('cartelera', this)">Cartelera</button>
+  <button class="nav-tab" role="tab" aria-selected="false" onclick="showPage('experiencias', this)">Experiencias</button>
+  <button class="nav-tab" role="tab" aria-selected="false" onclick="showPage('impacto', this)">Impacto</button>
+  <button class="nav-tab" role="tab" aria-selected="false" onclick="showPage('contacto', this)">Contacto</button>
 </nav>
 
 <!-- ==================== CARTELERA ==================== -->
@@ -326,8 +357,21 @@ footer .brand-small { color: var(--text); font-weight: 600; }
     <div class="container">
       <h2 class="section-title">Cartelera</h2>
       <p class="section-subtitle">Próximos eventos en la casa del arte</p>
-      <div id="eventsGrid" class="events-grid">
-        <div class="loading"><div class="spinner"></div>Cargando cartelera...</div>
+
+      <div class="filter-bar" id="filterBar" style="display:none;">
+        <div class="search-wrap">
+          <span class="search-icon" aria-hidden="true">🔍</span>
+          <input type="search" class="search-input" id="searchInput" placeholder="Buscar película o evento..." aria-label="Buscar en la cartelera" oninput="applyFilters()">
+        </div>
+        <div class="chips" id="typeChips" role="group" aria-label="Filtrar por tipo"></div>
+      </div>
+
+      <div id="eventsGrid" class="events-grid" aria-live="polite">
+        <div class="skeleton-grid">
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        </div>
       </div>
     </div>
   </section>
@@ -338,32 +382,32 @@ footer .brand-small { color: var(--text); font-weight: 600; }
   <section>
     <div class="container">
       <h2 class="section-title">Crea tu experiencia</h2>
-      <p class="section-subtitle">Elige como quieres vivir Trikles</p>
+      <p class="section-subtitle">Elige cómo quieres vivir Trikles</p>
 
       <div class="exp-grid" id="expGrid">
-        <div class="exp-card" onclick="selectExperience('peticion')">
-          <span class="exp-card-icon">🎬</span>
-          <span class="exp-card-badge" style="background:#1a1520;color:#c0a8e0;">Funcion publica</span>
-          <div class="exp-card-name">Peticion Abierta</div>
+        <button type="button" class="exp-card" onclick="selectExperience('peticion')">
+          <span class="exp-card-icon" aria-hidden="true">🎬</span>
+          <span class="exp-card-badge" style="background:#1a1520;color:#c0a8e0;">Función pública</span>
+          <div class="exp-card-name">Petición Abierta</div>
           <div class="exp-card-price">$100 <span>por persona</span></div>
-          <div class="exp-card-desc">Tu eliges la pelicula. La funcion es publica: cualquiera puede unirse.</div>
-        </div>
+          <div class="exp-card-desc">Tú eliges la película. La función es pública: cualquiera puede unirse.</div>
+        </button>
 
-        <div class="exp-card" onclick="selectExperience('privado')">
-          <span class="exp-card-icon">🎟️</span>
+        <button type="button" class="exp-card" onclick="selectExperience('privado')">
+          <span class="exp-card-icon" aria-hidden="true">🎟️</span>
           <span class="exp-card-badge" style="background:#1a1510;color:#d4b06a;">Sala exclusiva</span>
           <div class="exp-card-name">Cine Privado</div>
           <div class="exp-card-price">$250 <span>por persona</span></div>
-          <div class="exp-card-desc">Sala exclusiva por 4 horas. Tu pelicula, tus invitados, tu experiencia.</div>
-        </div>
+          <div class="exp-card-desc">Sala exclusiva por 4 horas. Tu película, tus invitados, tu experiencia.</div>
+        </button>
 
-        <div class="exp-card" onclick="selectExperience('cultural')">
-          <span class="exp-card-icon">🌿</span>
+        <button type="button" class="exp-card" onclick="selectExperience('cultural')">
+          <span class="exp-card-icon" aria-hidden="true">🌿</span>
           <span class="exp-card-badge" style="background:#0d1a1a;color:#70d0c0;">Evento comunitario</span>
           <div class="exp-card-name">Espacio Cultural</div>
           <div class="exp-card-price">$25 <span>por persona</span></div>
-          <div class="exp-card-desc">Organiza tu evento artistico, cultural o deportivo en la casa del arte.</div>
-        </div>
+          <div class="exp-card-desc">Organiza tu evento artístico, cultural o deportivo en la casa del arte.</div>
+        </button>
       </div>
 
       <div class="exp-form-container" id="expFormContainer"></div>
@@ -400,40 +444,40 @@ footer .brand-small { color: var(--text); font-weight: 600; }
 </div>
 
 <!-- ==================== MODAL: DETALLE EVENTO ==================== -->
-<div class="modal-overlay" id="eventModal">
+<div class="modal-overlay" id="eventModal" role="dialog" aria-modal="true" aria-label="Detalle del evento">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('eventModal')">&times;</button>
+    <button class="modal-close" onclick="closeModal('eventModal')" aria-label="Cerrar">&times;</button>
     <div id="eventDetail"></div>
   </div>
 </div>
 
 <!-- ==================== MODAL: FORMULARIO RESERVA ==================== -->
-<div class="modal-overlay" id="reserveModal">
+<div class="modal-overlay" id="reserveModal" role="dialog" aria-modal="true" aria-label="Reservar lugar">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('reserveModal')">&times;</button>
+    <button class="modal-close" onclick="closeModal('reserveModal')" aria-label="Cerrar">&times;</button>
     <div id="reserveForm"></div>
   </div>
 </div>
 
 <!-- ==================== MODAL: CONFIRMACIÓN QR ==================== -->
-<div class="modal-overlay" id="confirmModal">
+<div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-label="Reserva confirmada">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('confirmModal')">&times;</button>
+    <button class="modal-close" onclick="closeModal('confirmModal')" aria-label="Cerrar">&times;</button>
     <div id="confirmContent" class="confirmation"></div>
   </div>
 </div>
 
 <!-- ==================== MODAL: CONSULTAR RESERVA ==================== -->
-<div class="modal-overlay" id="lookupModal">
+<div class="modal-overlay" id="lookupModal" role="dialog" aria-modal="true" aria-label="Consultar mi reserva">
   <div class="modal">
-    <button class="modal-close" onclick="closeModal('lookupModal')">&times;</button>
+    <button class="modal-close" onclick="closeModal('lookupModal')" aria-label="Cerrar">&times;</button>
     <div id="lookupContent">
       <h2 style="margin-bottom: 6px;">🔍 Consultar mi reserva</h2>
       <p style="color: #7a7570; margin-bottom: 24px; font-size: 0.9rem;">Ingresa tu email para recuperar tus reservas y códigos QR</p>
       <form onsubmit="lookupReserva(event)">
         <div class="form-group">
-          <label>Email con el que reservaste *</label>
-          <input type="email" class="form-input" id="lookupEmail" required placeholder="tu@email.com">
+          <label for="lookupEmail">Email con el que reservaste *</label>
+          <input type="email" class="form-input" id="lookupEmail" required placeholder="tu@email.com" autocomplete="email">
         </div>
         <button type="submit" class="btn btn-primary" id="btnLookup">Buscar mis reservas</button>
       </form>
@@ -441,6 +485,9 @@ footer .brand-small { color: var(--text); font-weight: 600; }
     </div>
   </div>
 </div>
+
+<!-- ==================== TOAST ==================== -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- ==================== FOOTER ==================== -->
 <footer>
@@ -450,10 +497,13 @@ footer .brand-small { color: var(--text); font-weight: 600; }
 
 <script>
 // =================================================================
-// CONFIGURACIÓN — EDITA ESTAS 2 LÍNEAS CON TUS DATOS
+// CONFIGURACIÓN — pega aquí la URL de tu Apps Script (/exec)
 // =================================================================
-const SHEET_ID = '1OpC_OIMVoHCZ1PwNDrLJMr_JXJu0lqv_BLGGdfKGTGE';
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw3skEAAbt6skxAiSon39EHPOdEAw6gXcUbtFMxCfNHNL-OqisUgD-DQ5fGTm_1FGq-/exec';
+// =================================================================
+// Ya NO se lee el Google Sheet directamente: todo pasa por el Apps
+// Script para que la hoja pueda quedarse PRIVADA y nadie vea los
+// datos de tus clientes. (Lee las instrucciones en apps_script_reservas.js)
 // =================================================================
 
 // ============ DATA STORE ============
@@ -461,45 +511,28 @@ let eventos = [];
 let config = {};
 let impacto = [];
 let tiposEvento = {};
+let activeType = 'todos';
 
-// ============ GOOGLE SHEETS READER (JSON, robusto) ============
-function getCellValue(cell) {
-  if (!cell) return '';
-  if (cell.f !== undefined && cell.f !== null) return String(cell.f);
-  if (cell.v !== undefined && cell.v !== null) return String(cell.v);
-  return '';
+// ============ API (Apps Script) ============
+// GET: lecturas (bootstrap, lookup). CORS funciona en GET.
+async function apiGet(action, params = {}) {
+  const u = new URL(APPS_SCRIPT_URL);
+  u.searchParams.set('action', action);
+  Object.keys(params).forEach(k => u.searchParams.set(k, params[k]));
+  const res = await fetch(u.toString(), { method: 'GET' });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
 }
-
-async function fetchSheet(sheetName) {
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&headers=1`;
-  const res = await fetch(url);
-  const text = await res.text();
-  const jsonStr = text.match(/google\.visualization\.Query\.setResponse\((.+)\);?\s*$/s);
-  if (!jsonStr) return [];
-  const data = JSON.parse(jsonStr[1]);
-  const table = data.table;
-  if (!table || !table.cols || !table.rows) return [];
-
-  // Try labels from cols first
-  let headers = table.cols.map(c => (c.label || '').trim());
-  let dataRows = table.rows;
-
-  // If labels are empty, use the first data row as headers
-  if (!headers.some(h => h)) {
-    if (table.rows.length < 1) return [];
-    headers = table.rows[0].c ? table.rows[0].c.map(cell => getCellValue(cell).trim()) : [];
-    dataRows = table.rows.slice(1);
-  }
-
-  return dataRows.map(row => {
-    const obj = {};
-    if (!row.c) return obj;
-    headers.forEach((h, i) => {
-      if (!h) return;
-      obj[h] = getCellValue(row.c[i]);
-    });
-    return obj;
-  }).filter(row => Object.values(row).some(v => v));
+// POST: escrituras. Usamos text/plain para evitar el "preflight" CORS
+// y así PODER leer la respuesta del servidor (confirmación real).
+async function apiPost(payload) {
+  const res = await fetch(APPS_SCRIPT_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
 }
 
 // ============ TYPE COLORS ============
@@ -512,102 +545,120 @@ const TYPE_COLORS = {
   'Taller': { bg: '#0e4451', text: '#67e8f9' },
   'Estreno': { bg: '#5c1341', text: '#f9a8d4' },
 };
-
-function getTypeStyle(tipo) {
-  return TYPE_COLORS[tipo] || { bg: '#333', text: '#ccc' };
-}
+function getTypeStyle(tipo) { return TYPE_COLORS[tipo] || { bg: '#333', text: '#ccc' }; }
 
 // ============ LOAD ALL DATA ============
 async function loadData() {
   try {
-    const [eventosData, configData, impactoData, tiposData] = await Promise.all([
-      fetchSheet('Eventos'),
-      fetchSheet('Config'),
-      fetchSheet('Impacto'),
-      fetchSheet('Tipos_Evento'),
-    ]);
+    const data = await apiGet('bootstrap');
+    if (!data || data.status !== 'ok') throw new Error((data && data.message) || 'Respuesta inválida');
 
-    // Config → key-value
-    configData.forEach(row => { config[row.Clave] = row.Valor; });
+    (data.config ? Object.keys(data.config) : []).forEach(k => { config[k] = data.config[k]; });
+    (data.tipos || []).forEach(row => { if (row.Tipo) tiposEvento[row.Tipo] = row; });
 
-    // Tipos → map
-    tiposData.forEach(row => { tiposEvento[row.Tipo] = row; });
-
-    // Eventos activos no privados, futuros primero
-    const hoy = new Date().toISOString().split('T')[0];
-    eventos = eventosData
-      .filter(e => e.Estado === 'Activo' && e.Es_Privado !== 'Sí')
-      .sort((a, b) => (a.Fecha || '').localeCompare(b.Fecha || ''));
-
-    impacto = impactoData;
+    eventos = (data.eventos || []).sort((a, b) => (a.Fecha || '').localeCompare(b.Fecha || ''));
+    impacto = data.impacto || [];
 
     renderConfig();
+    buildTypeChips();
     renderEvents();
     renderImpact();
+    handleDeepLink();
   } catch (err) {
     console.error('Error cargando datos:', err);
     document.getElementById('eventsGrid').innerHTML =
       '<div class="empty-state"><div class="empty-state-icon">⚠️</div>' +
-      '<p>No se pudo cargar la cartelera.<br>Verifica que el Google Sheet esté publicado.</p></div>';
+      '<p>No se pudo cargar la cartelera.<br>Revisa que el Apps Script esté implementado como "Aplicación web" con acceso "Cualquier persona", ' +
+      'y que la URL en index.html sea la correcta.</p></div>';
   }
 }
 
 // ============ RENDER CONFIG ============
 function renderConfig() {
-  if (config.horario) {
-    document.getElementById('heroSchedule').textContent = config.horario;
-  }
-  if (config.mensaje_bienvenida) {
-    document.querySelector('.hero-tagline').textContent = config.mensaje_bienvenida;
-  }
-  // Logo from Config or Google Drive
+  if (config.horario) document.getElementById('heroSchedule').textContent = config.horario;
+  if (config.mensaje_bienvenida) document.querySelector('.hero-tagline').textContent = config.mensaje_bienvenida;
   if (config.logo_url) {
     const logoEl = document.getElementById('heroLogo');
     logoEl.src = getImageUrl(config.logo_url);
     logoEl.style.display = 'block';
   }
 
-  // Contact info
   let html = '';
-  if (config.direccion) html += `<p style="margin-bottom:12px"><strong>📍 Dirección:</strong><br>${config.direccion}</p>`;
-  if (config.horario) html += `<p style="margin-bottom:12px"><strong>🕐 Horario:</strong><br>${config.horario}</p>`;
-  if (config.whatsapp_contacto) html += `<p style="margin-bottom:12px"><strong>💬 WhatsApp:</strong><br><a href="https://wa.me/${config.whatsapp_contacto.replace(/[^0-9]/g,'')}">${config.whatsapp_contacto}</a></p>`;
-  if (config.email_contacto) html += `<p style="margin-bottom:12px"><strong>✉️ Email:</strong><br><a href="mailto:${config.email_contacto}">${config.email_contacto}</a></p>`;
-  if (config.causa_actual) html += `<p style="margin-top:20px; padding-top:16px; border-top:1px solid #333"><strong>🌱 Causa del mes:</strong><br>${config.causa_actual}</p>`;
+  if (config.direccion) html += `<p style="margin-bottom:12px"><strong>📍 Dirección:</strong><br>${esc(config.direccion)}</p>`;
+  if (config.horario) html += `<p style="margin-bottom:12px"><strong>🕐 Horario:</strong><br>${esc(config.horario)}</p>`;
+  if (config.whatsapp_contacto) html += `<p style="margin-bottom:12px"><strong>💬 WhatsApp:</strong><br><a href="https://wa.me/${config.whatsapp_contacto.replace(/[^0-9]/g,'')}" target="_blank" rel="noopener">${esc(config.whatsapp_contacto)}</a></p>`;
+  if (config.email_contacto) html += `<p style="margin-bottom:12px"><strong>✉️ Email:</strong><br><a href="mailto:${esc(config.email_contacto)}">${esc(config.email_contacto)}</a></p>`;
+  if (config.causa_actual) html += `<p style="margin-top:20px; padding-top:16px; border-top:1px solid #333"><strong>🌱 Causa del mes:</strong><br>${esc(config.causa_actual)}</p>`;
   document.getElementById('contactInfo').innerHTML = html || 'Sin información de contacto.';
 }
+
+// ============ FILTERS ============
+function buildTypeChips() {
+  const types = Array.from(new Set(eventos.map(e => e.Tipo).filter(Boolean)));
+  if (!eventos.length) return;
+  document.getElementById('filterBar').style.display = 'block';
+  const chips = document.getElementById('typeChips');
+  chips.innerHTML =
+    `<button type="button" class="chip active" data-type="todos" onclick="setType('todos', this)">Todos</button>` +
+    types.map(t => `<button type="button" class="chip" data-type="${esc(t)}" onclick="setType('${esc(t)}', this)">${esc(t)}</button>`).join('');
+}
+function setType(type, el) {
+  activeType = type;
+  document.querySelectorAll('#typeChips .chip').forEach(c => c.classList.toggle('active', c === el));
+  applyFilters();
+}
+function getFilteredEvents() {
+  const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+  return eventos.filter(e => {
+    if (activeType !== 'todos' && e.Tipo !== activeType) return false;
+    if (q) {
+      const hay = `${e.Titulo || ''} ${e.Descripcion || ''} ${e.Tipo || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+}
+function applyFilters() { renderEvents(); }
 
 // ============ RENDER EVENTS ============
 function renderEvents() {
   const grid = document.getElementById('eventsGrid');
+  const list = getFilteredEvents();
+
   if (!eventos.length) {
     grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎬</div><p>No hay eventos próximos por ahora.<br>¡Vuelve pronto!</p></div>';
     return;
   }
+  if (!list.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>No encontramos eventos con ese filtro.</p></div>';
+    return;
+  }
 
-  grid.innerHTML = eventos.map((e, i) => {
+  grid.innerHTML = list.map(e => {
+    const i = eventos.indexOf(e);
     const style = getTypeStyle(e.Tipo);
     const cupoMax = parseInt(e.Cupo_Max) || 0;
     const reservados = parseInt(e.Reservas_Confirmadas) || 0;
     const disponible = Math.max(0, cupoMax - reservados);
     const lowSpots = disponible <= 5 && disponible > 0;
     const fecha = formatDate(e.Fecha);
-    const precio = parseInt(e.Precio_MXN) ? `$${parseInt(e.Precio_MXN)} MXN` : 'Gratis';
-
     const imgUrl = getImageUrl(e.Imagen_URL);
+    const spotsLabel = disponible > 0 ? disponible + ' lugares' : 'Agotado';
+    const spotsClass = disponible === 0 ? 'full' : (lowSpots ? 'low' : '');
+
     return `
-      <div class="event-card" onclick="openEventDetail(${i})">
-        ${imgUrl ? `<img class="event-card-img" src="${imgUrl}" alt="${esc(e.Titulo)}" onerror="this.style.display='none'">` : ''}
+      <button type="button" class="event-card" onclick="openEventDetail(${i})" aria-label="${esc(e.Titulo)}, ${fecha}">
+        ${imgUrl ? `<img class="event-card-img" src="${imgUrl}" alt="${esc(e.Titulo)}" loading="lazy" onerror="this.style.display='none'">` : ''}
         <div class="event-card-header">
-          <span class="event-type-badge" style="background:${style.bg};color:${style.text}">${e.Tipo}</span>
+          <span class="event-type-badge" style="background:${style.bg};color:${style.text}">${esc(e.Tipo)}</span>
           <div class="event-card-title">${esc(e.Titulo)}</div>
           <div class="event-card-desc">${esc(e.Descripcion)}</div>
         </div>
         <div class="event-card-footer">
-          <span class="event-date">📅 ${fecha} · ${e.Hora_Inicio || ''}</span>
-          <span class="event-spots ${lowSpots ? 'low' : ''}">${disponible > 0 ? disponible + ' lugares' : 'Agotado'}</span>
+          <span class="event-date">📅 ${fecha} · ${esc(e.Hora_Inicio || '')}</span>
+          <span class="event-spots ${spotsClass}">${spotsLabel}</span>
         </div>
-      </div>`;
+      </button>`;
   }).join('');
 }
 
@@ -618,46 +669,48 @@ function renderImpact() {
     grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🌱</div><p>Próximamente información de impacto.</p></div>';
     return;
   }
-
   grid.innerHTML = impacto.map(item => `
     <div class="impact-card">
       <div class="impact-category">${esc(item.Categoria)}</div>
       <div class="impact-desc">${esc(item.Descripcion)}</div>
       <div class="impact-beneficiary">🤝 ${esc(item.Beneficiario)}</div>
       ${parseInt(item.Monto_MXN) ? `<div class="impact-amount">$${parseInt(item.Monto_MXN).toLocaleString()} MXN aportados</div>` : ''}
-    </div>
-  `).join('');
+    </div>`).join('');
 }
 
 // ============ EVENT DETAIL MODAL ============
 function openEventDetail(index) {
   const e = eventos[index];
+  if (!e) return;
   const style = getTypeStyle(e.Tipo);
   const cupoMax = parseInt(e.Cupo_Max) || 0;
   const reservados = parseInt(e.Reservas_Confirmadas) || 0;
   const disponible = Math.max(0, cupoMax - reservados);
   const precio = parseInt(e.Precio_MXN) ? `$${parseInt(e.Precio_MXN)} MXN` : 'Gratis';
   const duracion = parseInt(e.Duracion_Min) ? `${e.Duracion_Min} min` : '—';
-
   const imgUrl = getImageUrl(e.Imagen_URL);
+
   document.getElementById('eventDetail').innerHTML = `
-    ${imgUrl ? `<img src="${imgUrl}" alt="${esc(e.Titulo)}" style="width:100%;max-height:250px;object-fit:cover;border-radius:8px;margin-bottom:16px" onerror="this.style.display='none'">` : ''}
+    ${imgUrl ? `<img src="${imgUrl}" alt="${esc(e.Titulo)}" style="width:100%;max-height:250px;object-fit:cover;border-radius:8px;margin-bottom:16px" loading="lazy" onerror="this.style.display='none'">` : ''}
     <h2>${esc(e.Titulo)}</h2>
-    <div class="modal-type">
-      <span class="event-type-badge" style="background:${style.bg};color:${style.text}">${e.Tipo}</span>
-    </div>
+    <div class="modal-type"><span class="event-type-badge" style="background:${style.bg};color:${style.text}">${esc(e.Tipo)}</span></div>
     <div class="modal-meta">
       <div class="meta-item"><label>Fecha</label><span>${formatDate(e.Fecha)}</span></div>
-      <div class="meta-item"><label>Hora</label><span>${e.Hora_Inicio || '—'}</span></div>
+      <div class="meta-item"><label>Hora</label><span>${esc(e.Hora_Inicio || '—')}</span></div>
       <div class="meta-item"><label>Duración</label><span>${duracion}</span></div>
       <div class="meta-item"><label>Precio</label><span>${precio}</span></div>
       <div class="meta-item"><label>Cupo</label><span>${disponible} de ${cupoMax} disponibles</span></div>
     </div>
     <div class="modal-desc">${esc(e.Descripcion)}</div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary btn-icon" onclick="addToCalendar(${index})">📅 Agregar al calendario</button>
+      <button type="button" class="btn btn-secondary btn-icon" onclick="shareEvent(${index})">🔗 Compartir</button>
+    </div>
     ${disponible > 0
       ? `<button class="btn btn-primary" onclick="openReserveForm(${index})">🎟️ Reservar mi lugar</button>`
-      : `<button class="btn btn-secondary" disabled>Agotado</button>`
-    }`;
+      : `<button class="btn btn-secondary" disabled>Agotado</button>`}`;
+
+  if (e.ID_Evento) history.replaceState(null, '', '#evento-' + e.ID_Evento);
   openModal('eventModal');
 }
 
@@ -678,32 +731,17 @@ function openReserveForm(index) {
     <h2 style="margin-bottom: 4px;">Reservar</h2>
     <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 0.9rem;">${esc(e.Titulo)} · ${formatDate(e.Fecha)}</p>
     <form onsubmit="submitReserve(event, ${index})">
-      <div class="form-group">
-        <label>Nombre completo *</label>
-        <input type="text" class="form-input" name="nombre" required placeholder="Tu nombre">
-      </div>
-      <div class="form-group">
-        <label>WhatsApp o teléfono *</label>
-        <input type="tel" class="form-input" name="telefono" required placeholder="+52 55 1234 5678">
-      </div>
-      <div class="form-group">
-        <label>Email *</label>
-        <input type="email" class="form-input" name="email" required placeholder="tu@email.com">
-      </div>
-      <div class="form-group">
-        <label>¿Cuántas personas? *</label>
-        <select class="form-input" name="cantidad" required>${optionsHTML}</select>
-      </div>
-      <div class="form-group">
-        <label>Notas (opcional)</label>
-        <textarea class="form-textarea" name="notas" placeholder="Algo que debamos saber..."></textarea>
-      </div>
+      <div class="form-group"><label for="rNombre">Nombre completo *</label><input id="rNombre" type="text" class="form-input" name="nombre" required placeholder="Tu nombre" autocomplete="name"></div>
+      <div class="form-group"><label for="rTel">WhatsApp o teléfono *</label><input id="rTel" type="tel" class="form-input" name="telefono" required placeholder="+52 55 1234 5678" autocomplete="tel"></div>
+      <div class="form-group"><label for="rEmail">Email *</label><input id="rEmail" type="email" class="form-input" name="email" required placeholder="tu@email.com" autocomplete="email"></div>
+      <div class="form-group"><label for="rCant">¿Cuántas personas? *</label><select id="rCant" class="form-input" name="cantidad" required>${optionsHTML}</select></div>
+      <div class="form-group"><label for="rNotas">Notas (opcional)</label><textarea id="rNotas" class="form-textarea" name="notas" placeholder="Algo que debamos saber..."></textarea></div>
       <button type="submit" class="btn btn-primary" id="btnSubmit">🎟️ Confirmar reserva</button>
     </form>`;
   openModal('reserveModal');
 }
 
-// ============ SUBMIT RESERVATION ============
+// ============ SUBMIT RESERVATION (confirmación REAL) ============
 async function submitReserve(event, index) {
   event.preventDefault();
   const form = event.target;
@@ -728,93 +766,198 @@ async function submitReserve(event, index) {
   };
 
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    showConfirmation(data, e);
+    const resp = await apiPost(data);
+    if (resp.status === 'ok') {
+      // refleja el nuevo cupo localmente
+      if (resp.disponible != null) {
+        e.Reservas_Confirmadas = String((parseInt(e.Cupo_Max) || 0) - resp.disponible);
+      }
+      showConfirmation(data, e);
+      renderEvents();
+    } else if (resp.status === 'full') {
+      btn.disabled = false;
+      btn.textContent = '🎟️ Confirmar reserva';
+      toast(`Lo sentimos, ya no hay suficientes lugares. Quedan ${resp.disponible}.`, 'error');
+    } else {
+      throw new Error(resp.message || 'Error desconocido');
+    }
   } catch (err) {
     console.error(err);
-    // Even if CORS blocks the response, the request usually goes through with no-cors
-    showConfirmation(data, e);
+    btn.disabled = false;
+    btn.textContent = '🎟️ Confirmar reserva';
+    toast('No se pudo confirmar tu reserva. Revisa tu conexión e inténtalo de nuevo.', 'error');
   }
 }
 
 // ============ QR CONFIRMATION ============
 function showConfirmation(data, evento) {
   closeModal('reserveModal');
-
   const msgConfirm = config.mensaje_confirmacion || '¡Reserva confirmada! Te esperamos.';
   document.getElementById('confirmContent').innerHTML = `
     <h2>¡Estás dentro! 🎉</h2>
     <p>${esc(msgConfirm)}</p>
-    <div class="qr-code-text">${data.Codigo_Confirmacion}</div>
+    <div class="qr-code-text">${esc(data.Codigo_Confirmacion)}</div>
     <div class="qr-container" id="qrCodeBox"></div>
     <p class="qr-instructions">
       Muestra este código QR al llegar a <strong>${esc(evento.Titulo)}</strong><br>
-      📅 ${formatDate(evento.Fecha)} · ${evento.Hora_Inicio || ''}<br>
-      👥 ${data.Cantidad_Personas} persona${parseInt(data.Cantidad_Personas) > 1 ? 's' : ''}<br><br>
+      📅 ${formatDate(evento.Fecha)} · ${esc(evento.Hora_Inicio || '')}<br>
+      👥 ${esc(data.Cantidad_Personas)} persona${parseInt(data.Cantidad_Personas) > 1 ? 's' : ''}<br><br>
       <em>Toma captura de pantalla para no perderlo.</em>
     </p>
-    <button class="btn btn-secondary" style="margin-top: 16px;" onclick="closeModal('confirmModal')">Cerrar</button>`;
+    <div class="modal-actions" style="margin-top:8px;">
+      <button type="button" class="btn btn-secondary btn-icon" onclick="addToCalendarByEvent('${esc(evento.ID_Evento)}')">📅 Agregar al calendario</button>
+    </div>
+    <button class="btn btn-secondary" style="margin-top: 12px;" onclick="closeModal('confirmModal')">Cerrar</button>`;
 
   openModal('confirmModal');
+  makeQR('qrCodeBox', `TRIKLES|${data.Codigo_Confirmacion}|${data.ID_Evento}|${data.Nombre}|${data.Cantidad_Personas}`, 200);
+}
 
-  // Generate QR code
-  const qrBox = document.getElementById('qrCodeBox');
-  qrBox.innerHTML = '';
-  new QRCode(qrBox, {
-    text: `TRIKLES|${data.Codigo_Confirmacion}|${data.ID_Evento}|${data.Nombre}|${data.Cantidad_Personas}`,
-    width: 200, height: 200,
-    colorDark: '#1a1a1a', colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M,
-  });
+function makeQR(boxId, text, size) {
+  const box = document.getElementById(boxId);
+  if (!box || typeof QRCode === 'undefined') return;
+  box.innerHTML = '';
+  new QRCode(box, { text, width: size, height: size, colorDark: '#1a1a1a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+}
+
+// ============ ADD TO CALENDAR (.ics) ============
+function pad(n) { return String(n).padStart(2, '0'); }
+function icsStamp(dateStr, timeStr) {
+  // dateStr: yyyy-mm-dd ; timeStr: HH:mm (hora local, "flotante")
+  const [y, m, d] = (dateStr || '').split('-').map(Number);
+  let hh = 9, mm = 0;
+  if (timeStr && /\d{1,2}:\d{2}/.test(timeStr)) { const p = timeStr.split(':'); hh = +p[0]; mm = +p[1]; }
+  return `${y}${pad(m)}${pad(d)}T${pad(hh)}${pad(mm)}00`;
+}
+function addToCalendarByEvent(id) {
+  const idx = eventos.findIndex(e => String(e.ID_Evento) === String(id));
+  if (idx >= 0) addToCalendar(idx);
+}
+function addToCalendar(index) {
+  const e = eventos[index];
+  if (!e || !e.Fecha) { toast('Este evento no tiene fecha definida.', 'error'); return; }
+  const start = icsStamp(e.Fecha, e.Hora_Inicio);
+  const durMin = parseInt(e.Duracion_Min) || 120;
+  // calcula fin sumando duración
+  const [y, m, d] = e.Fecha.split('-').map(Number);
+  let hh = 9, mm = 0;
+  if (e.Hora_Inicio && /\d{1,2}:\d{2}/.test(e.Hora_Inicio)) { const p = e.Hora_Inicio.split(':'); hh = +p[0]; mm = +p[1]; }
+  const endDate = new Date(y, m - 1, d, hh, mm + durMin);
+  const end = `${endDate.getFullYear()}${pad(endDate.getMonth()+1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
+  const loc = (config.direccion || 'Cineteca Trikles').replace(/\n/g, ' ');
+
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cineteca Trikles//ES',
+    'BEGIN:VEVENT',
+    'UID:trikles-' + (e.ID_Evento || start) + '@cinetecatrikles',
+    'DTSTART:' + start, 'DTEND:' + end,
+    'SUMMARY:' + icsEsc(e.Titulo || 'Evento Trikles'),
+    'DESCRIPTION:' + icsEsc(e.Descripcion || ''),
+    'LOCATION:' + icsEsc(loc),
+    'END:VEVENT', 'END:VCALENDAR'
+  ].join('\r\n');
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = (e.Titulo || 'evento').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_') + '.ics';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  toast('Evento descargado para tu calendario 📅', 'success');
+}
+function icsEsc(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
+
+// ============ SHARE ============
+async function shareEvent(index) {
+  const e = eventos[index];
+  const url = location.origin + location.pathname + (e.ID_Evento ? '#evento-' + e.ID_Evento : '');
+  const text = `${e.Titulo} · ${formatDate(e.Fecha)} en Cineteca Trikles`;
+  if (navigator.share) {
+    try { await navigator.share({ title: 'Cineteca Trikles', text, url }); return; } catch (err) { if (err && err.name === 'AbortError') return; }
+  }
+  try {
+    await navigator.clipboard.writeText(url);
+    toast('Enlace copiado al portapapeles 🔗', 'success');
+  } catch {
+    window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank', 'noopener');
+  }
+}
+
+// ============ DEEP LINK ============
+function handleDeepLink() {
+  const m = (location.hash || '').match(/^#evento-(.+)$/);
+  if (!m) return;
+  const idx = eventos.findIndex(e => String(e.ID_Evento) === decodeURIComponent(m[1]));
+  if (idx >= 0) openEventDetail(idx);
 }
 
 // ============ NAVIGATION ============
-function showPage(page) {
+function showPage(page, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
   document.getElementById(`page-${page}`).classList.add('active');
-  event.target.classList.add('active');
+  if (el) { el.classList.add('active'); el.setAttribute('aria-selected', 'true'); }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ============ MODALS ============
-function openModal(id) { document.getElementById(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow = ''; }
-
-// Close modal on overlay click
+// ============ MODALS (con foco accesible) ============
+let lastFocused = null;
+function openModal(id) {
+  lastFocused = document.activeElement;
+  const overlay = document.getElementById(id);
+  overlay.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  const focusable = overlay.querySelector('input, select, textarea, button:not(.modal-close)') || overlay.querySelector('.modal-close');
+  if (focusable) setTimeout(() => focusable.focus(), 50);
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  if (!document.querySelector('.modal-overlay.open')) document.body.style.overflow = '';
+  if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
+  if (id === 'eventModal' && location.hash) history.replaceState(null, '', location.pathname);
+}
 document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeModal(overlay.id);
-  });
+  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(overlay.id); });
 });
-
-// Close on Escape
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
+  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
+  // focus trap dentro del modal abierto
+  if (e.key === 'Tab') {
+    const open = document.querySelector('.modal-overlay.open .modal');
+    if (!open) return;
+    const items = open.querySelectorAll('a[href], button:not([disabled]), input, select, textarea');
+    if (!items.length) return;
+    const first = items[0], last = items[items.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   }
 });
 
+// ============ TOAST ============
+let toastTimer = null;
+function toast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast ' + type; }, 4000);
+}
+
 // ============ HELPERS ============
-function esc(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+function esc(str) { const d = document.createElement('div'); d.textContent = str == null ? '' : str; return d.innerHTML; }
 
 function getImageUrl(val) {
   if (!val || !val.trim()) return '';
   val = val.trim();
-  // If it's already a full URL, use it directly
   if (val.startsWith('http')) return val;
-  // Otherwise treat it as a Google Drive file ID
   return `https://drive.google.com/thumbnail?id=${val}&sz=w800`;
 }
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
   try {
-    const [y, m, d] = dateStr.split('-').map(Number);
+    const [y, m, d] = String(dateStr).split('-').map(Number);
+    if (!y || !m || !d) return dateStr;
     const date = new Date(y, m - 1, d);
     return date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
   } catch { return dateStr; }
@@ -822,36 +965,15 @@ function formatDate(dateStr) {
 
 // ============ EXPERIENCES ============
 const EXP_CONFIG = {
-  peticion: {
-    nombre: 'Peticion Abierta',
-    precio: 100,
-    icon: '🎬',
-    color: '#c0a8e0',
-    fields: 'peticion'
-  },
-  privado: {
-    nombre: 'Cine Privado',
-    precio: 250,
-    icon: '🎟️',
-    color: '#d4b06a',
-    fields: 'privado'
-  },
-  cultural: {
-    nombre: 'Espacio Cultural / Deportivo',
-    precio: 25,
-    icon: '🌿',
-    color: '#70d0c0',
-    fields: 'cultural'
-  }
+  peticion: { nombre: 'Petición Abierta', precio: 100, icon: '🎬', color: '#c0a8e0' },
+  privado:  { nombre: 'Cine Privado', precio: 250, icon: '🎟️', color: '#d4b06a' },
+  cultural: { nombre: 'Espacio Cultural / Deportivo', precio: 25, icon: '🌿', color: '#70d0c0' },
 };
-
 let selectedExp = null;
 
 function selectExperience(type) {
   selectedExp = type;
   const cfg = EXP_CONFIG[type];
-
-  // Highlight selected card
   document.querySelectorAll('.exp-card').forEach((c, i) => {
     const types = ['peticion', 'privado', 'cultural'];
     c.classList.toggle('selected', types[i] === type);
@@ -859,125 +981,53 @@ function selectExperience(type) {
 
   const container = document.getElementById('expFormContainer');
   container.className = 'exp-form-container visible';
-
   let specificFields = '';
 
   if (type === 'peticion') {
     specificFields = `
-      <div class="public-notice">Esta funcion sera publica. Otras personas podran unirse y comprar su entrada.</div>
-      <div class="form-group">
-        <label>Pelicula que quieres ver *</label>
-        <input type="text" class="form-input" name="pelicula" required placeholder="Ej: Interstellar, El Padrino, Coco...">
-      </div>
-      <div class="form-group">
-        <label>Fecha deseada *</label>
-        <input type="date" class="form-input" name="fecha" required min="${getTomorrow()}">
-      </div>
-      <div class="form-group">
-        <label>Horario preferido *</label>
-        <select class="form-input" name="hora" required>
-          <option value="">Selecciona...</option>
-          <option value="16:00">16:00</option>
-          <option value="18:00">18:00</option>
-          <option value="20:00">20:00</option>
-          <option value="22:00">22:00</option>
-        </select>
-      </div>`;
+      <div class="public-notice">Esta función será pública. Otras personas podrán unirse y comprar su entrada.</div>
+      <div class="form-group"><label for="xPel">Película que quieres ver *</label><input id="xPel" type="text" class="form-input" name="pelicula" required placeholder="Ej: Interstellar, El Padrino, Coco..."></div>
+      <div class="form-group"><label for="xFec">Fecha deseada *</label><input id="xFec" type="date" class="form-input" name="fecha" required min="${getTomorrow()}"></div>
+      <div class="form-group"><label for="xHor">Horario preferido *</label><select id="xHor" class="form-input" name="hora" required>
+        <option value="">Selecciona...</option><option value="16:00">16:00</option><option value="18:00">18:00</option><option value="20:00">20:00</option><option value="22:00">22:00</option>
+      </select></div>`;
   } else if (type === 'privado') {
     specificFields = `
-      <div class="form-group">
-        <label>Que quieres proyectar? *</label>
-        <input type="text" class="form-input" name="pelicula" required placeholder="Pelicula, documental, video especial, presentacion...">
-      </div>
-      <div class="form-group">
-        <label>Fecha deseada *</label>
-        <input type="date" class="form-input" name="fecha" required min="${getTomorrow()}">
-      </div>
-      <div class="form-group">
-        <label>Bloque de 4 horas *</label>
-        <select class="form-input" name="hora" required>
-          <option value="">Selecciona bloque...</option>
-          <option value="14:00">14:00 – 18:00</option>
-          <option value="16:00">16:00 – 20:00</option>
-          <option value="18:00">18:00 – 22:00</option>
-          <option value="19:00">19:00 – 23:00</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Detalles adicionales</label>
-        <textarea class="form-textarea" name="detalles" placeholder="Cumpleanos, cita, reunion corporativa, decoracion especial..."></textarea>
-      </div>`;
+      <div class="form-group"><label for="xPel">¿Qué quieres proyectar? *</label><input id="xPel" type="text" class="form-input" name="pelicula" required placeholder="Película, documental, video especial, presentación..."></div>
+      <div class="form-group"><label for="xFec">Fecha deseada *</label><input id="xFec" type="date" class="form-input" name="fecha" required min="${getTomorrow()}"></div>
+      <div class="form-group"><label for="xHor">Bloque de 4 horas *</label><select id="xHor" class="form-input" name="hora" required>
+        <option value="">Selecciona bloque...</option><option value="14:00">14:00 – 18:00</option><option value="16:00">16:00 – 20:00</option><option value="18:00">18:00 – 22:00</option><option value="19:00">19:00 – 23:00</option>
+      </select></div>
+      <div class="form-group"><label for="xDet">Detalles adicionales</label><textarea id="xDet" class="form-textarea" name="detalles" placeholder="Cumpleaños, cita, reunión corporativa, decoración especial..."></textarea></div>`;
   } else if (type === 'cultural') {
     specificFields = `
-      <div class="form-group">
-        <label>Tipo de evento *</label>
-        <select class="form-input" name="tipo_evento" required>
-          <option value="">Selecciona...</option>
-          <option value="Artistico">Artistico (musica, teatro, danza, exposicion)</option>
-          <option value="Cultural">Cultural (conferencia, taller, proyeccion)</option>
-          <option value="Deportivo">Deportivo (torneo, exhibicion, entrenamiento)</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Nombre del evento *</label>
-        <input type="text" class="form-input" name="pelicula" required placeholder="Ej: Torneo de ajedrez, Noche de jazz, Expo fotografia...">
-      </div>
-      <div class="form-group">
-        <label>Fecha deseada *</label>
-        <input type="date" class="form-input" name="fecha" required min="${getTomorrow()}">
-      </div>
-      <div class="form-group">
-        <label>Horario preferido *</label>
-        <select class="form-input" name="hora" required>
-          <option value="">Selecciona...</option>
-          <option value="10:00">10:00</option>
-          <option value="14:00">14:00</option>
-          <option value="16:00">16:00</option>
-          <option value="18:00">18:00</option>
-          <option value="20:00">20:00</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Descripcion del evento *</label>
-        <textarea class="form-textarea" name="detalles" required placeholder="Cuentanos de que se trata tu evento..."></textarea>
-      </div>`;
+      <div class="form-group"><label for="xTipo">Tipo de evento *</label><select id="xTipo" class="form-input" name="tipo_evento" required>
+        <option value="">Selecciona...</option><option value="Artistico">Artístico (música, teatro, danza, exposición)</option><option value="Cultural">Cultural (conferencia, taller, proyección)</option><option value="Deportivo">Deportivo (torneo, exhibición, entrenamiento)</option>
+      </select></div>
+      <div class="form-group"><label for="xPel">Nombre del evento *</label><input id="xPel" type="text" class="form-input" name="pelicula" required placeholder="Ej: Torneo de ajedrez, Noche de jazz, Expo fotografía..."></div>
+      <div class="form-group"><label for="xFec">Fecha deseada *</label><input id="xFec" type="date" class="form-input" name="fecha" required min="${getTomorrow()}"></div>
+      <div class="form-group"><label for="xHor">Horario preferido *</label><select id="xHor" class="form-input" name="hora" required>
+        <option value="">Selecciona...</option><option value="10:00">10:00</option><option value="14:00">14:00</option><option value="16:00">16:00</option><option value="18:00">18:00</option><option value="20:00">20:00</option>
+      </select></div>
+      <div class="form-group"><label for="xDet">Descripción del evento *</label><textarea id="xDet" class="form-textarea" name="detalles" required placeholder="Cuéntanos de qué se trata tu evento..."></textarea></div>`;
   }
 
   container.innerHTML = `
-    <div class="exp-form-title">${cfg.icon} ${cfg.nombre}</div>
+    <div class="exp-form-title">${cfg.icon} ${esc(cfg.nombre)}</div>
     <div class="exp-form-subtitle">$${cfg.precio} por persona · Llena los datos para solicitar</div>
-
     <form onsubmit="submitExperience(event)">
       ${specificFields}
-
-      <div class="form-group">
-        <label>Numero de asistentes *</label>
-        <input type="number" class="form-input" name="asistentes" required min="1" max="100" value="1"
-          oninput="updateBudget(this.value)">
-      </div>
-
+      <div class="form-group"><label for="xAsist">Número de asistentes *</label><input id="xAsist" type="number" class="form-input" name="asistentes" required min="1" max="100" value="1" oninput="updateBudget(this.value)"></div>
       <div class="budget-box">
         <div class="budget-label">Presupuesto estimado</div>
         <div class="budget-total" id="budgetTotal">$${cfg.precio} MXN</div>
         <div class="budget-breakdown" id="budgetBreakdown">1 persona × $${cfg.precio}</div>
       </div>
-
-      <div class="form-group">
-        <label>Tu nombre *</label>
-        <input type="text" class="form-input" name="nombre" required placeholder="Nombre completo">
-      </div>
-      <div class="form-group">
-        <label>WhatsApp *</label>
-        <input type="tel" class="form-input" name="telefono" required placeholder="+52 ...">
-      </div>
-      <div class="form-group">
-        <label>Email</label>
-        <input type="email" class="form-input" name="email" placeholder="tu@email.com">
-      </div>
-
+      <div class="form-group"><label for="xNom">Tu nombre *</label><input id="xNom" type="text" class="form-input" name="nombre" required placeholder="Nombre completo" autocomplete="name"></div>
+      <div class="form-group"><label for="xTel">WhatsApp *</label><input id="xTel" type="tel" class="form-input" name="telefono" required placeholder="+52 ..." autocomplete="tel"></div>
+      <div class="form-group"><label for="xEmail">Email</label><input id="xEmail" type="email" class="form-input" name="email" placeholder="tu@email.com" autocomplete="email"></div>
       <button type="submit" class="btn btn-primary" id="btnExpSubmit">Solicitar experiencia</button>
     </form>`;
-
   container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
@@ -990,11 +1040,7 @@ function updateBudget(num) {
   document.getElementById('budgetBreakdown').textContent = `${n} persona${n > 1 ? 's' : ''} × $${cfg.precio}`;
 }
 
-function getTomorrow() {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split('T')[0];
-}
+function getTomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; }
 
 async function submitExperience(event) {
   event.preventDefault();
@@ -1006,44 +1052,40 @@ async function submitExperience(event) {
   const cfg = EXP_CONFIG[selectedExp];
   const asistentes = parseInt(form.asistentes.value) || 1;
   const total = asistentes * cfg.precio;
-
   const tipoEvento = form.tipo_evento ? form.tipo_evento.value : '';
   const detalles = form.detalles ? form.detalles.value : '';
   const descripcion = form.pelicula ? form.pelicula.value : '';
 
   const data = {
-    sheet: 'Solicitudes',
-    Tipo: cfg.nombre,
-    Nombre: form.nombre.value,
-    Telefono: form.telefono.value,
-    Email: form.email.value || '',
+    sheet: 'Solicitudes', Tipo: cfg.nombre,
+    Nombre: form.nombre.value, Telefono: form.telefono.value, Email: form.email.value || '',
     Descripcion: tipoEvento ? `[${tipoEvento}] ${descripcion} — ${detalles}` : descripcion + (detalles ? ' — ' + detalles : ''),
-    Fecha_Solicitada: form.fecha.value,
-    Hora_Solicitada: form.hora.value,
-    Num_Asistentes: String(asistentes),
-    Precio_Unitario: String(cfg.precio),
-    Total: String(total),
-    Estado: 'Pendiente'
+    Fecha_Solicitada: form.fecha.value, Hora_Solicitada: form.hora.value,
+    Num_Asistentes: String(asistentes), Precio_Unitario: String(cfg.precio), Total: String(total), Estado: 'Pendiente'
   };
 
+  let ok = true;
   try {
-    await fetch(APPS_SCRIPT_URL, {
-      method: 'POST', mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-  } catch (err) { console.error(err); }
+    const resp = await apiPost(data);
+    ok = !resp || resp.status === 'ok' || resp.status === undefined;
+    if (resp && resp.status === 'error') ok = false;
+  } catch (err) { console.error(err); ok = false; }
 
-  // Show confirmation
-  const container = document.getElementById('expFormContainer');
-  container.innerHTML = `
+  if (!ok) {
+    btn.disabled = false;
+    btn.textContent = 'Solicitar experiencia';
+    toast('No se pudo enviar tu solicitud. Inténtalo de nuevo.', 'error');
+    return;
+  }
+
+  document.getElementById('expFormContainer').innerHTML = `
     <div class="confirmation">
       <h2>Solicitud enviada</h2>
-      <p>Recibimos tu solicitud de <strong>${cfg.nombre}</strong> para ${asistentes} persona${asistentes > 1 ? 's' : ''}.</p>
+      <p>Recibimos tu solicitud de <strong>${esc(cfg.nombre)}</strong> para ${asistentes} persona${asistentes > 1 ? 's' : ''}.</p>
       <div class="budget-box">
         <div class="budget-label">Total estimado</div>
         <div class="budget-total">$${total.toLocaleString()} MXN</div>
-        <div class="budget-breakdown">${formatDate(form.fecha.value)} · ${form.hora.value}</div>
+        <div class="budget-breakdown">${formatDate(form.fecha.value)} · ${esc(form.hora.value)}</div>
       </div>
       <p style="color:#7a7570;font-size:0.9rem;">Te contactaremos por WhatsApp para confirmar disponibilidad y coordinar el pago.</p>
       <button class="btn btn-secondary" style="margin-top:16px;" onclick="resetExperience()">Solicitar otra experiencia</button>
@@ -1053,17 +1095,17 @@ async function submitExperience(event) {
 function resetExperience() {
   selectedExp = null;
   document.querySelectorAll('.exp-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('expFormContainer').className = 'exp-form-container';
-  document.getElementById('expFormContainer').innerHTML = '';
+  const c = document.getElementById('expFormContainer');
+  c.className = 'exp-form-container';
+  c.innerHTML = '';
 }
 
-// ============ LOOKUP RESERVAS ============
+// ============ LOOKUP RESERVAS (privado, vía servidor) ============
 async function lookupReserva(event) {
   event.preventDefault();
   const btn = document.getElementById('btnLookup');
   const resultsDiv = document.getElementById('lookupResults');
   const email = document.getElementById('lookupEmail').value.trim().toLowerCase();
-
   if (!email) return;
 
   btn.disabled = true;
@@ -1071,11 +1113,8 @@ async function lookupReserva(event) {
   resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Buscando tus reservas...</div>';
 
   try {
-    const reservas = await fetchSheet('Reservas');
-    const misReservas = reservas.filter(r =>
-      (r.Email || '').trim().toLowerCase() === email ||
-      (r.Telefono || '').trim().replace(/\D/g, '').slice(-10) === email.replace(/\D/g, '').slice(-10) && email.includes('@') === false
-    );
+    const resp = await apiGet('lookup', { email });
+    const misReservas = (resp && resp.status === 'ok') ? (resp.reservas || []) : [];
 
     if (!misReservas.length) {
       resultsDiv.innerHTML = `
@@ -1084,75 +1123,60 @@ async function lookupReserva(event) {
           <p>No encontramos reservas con ese email.</p>
           <p style="font-size:0.85rem; margin-top:8px;">Verifica que sea el mismo email que usaste al reservar.</p>
         </div>`;
-      btn.disabled = false;
-      btn.textContent = 'Buscar mis reservas';
-      return;
-    }
+    } else {
+      misReservas.sort((a, b) => (b.Fecha_Reserva || '').localeCompare(a.Fecha_Reserva || ''));
+      resultsDiv.innerHTML = `
+        <p style="color:#7a7570; font-size:0.85rem; margin-bottom:16px;">
+          Se encontraron <strong style="color:#f5f0e8;">${misReservas.length}</strong> reserva${misReservas.length > 1 ? 's' : ''}
+        </p>` +
+        misReservas.map((r, i) => {
+          const estado = (r.Estado || 'Pendiente').trim();
+          const estadoClass = estado.toLowerCase() === 'confirmada' ? 'confirmada' : 'pendiente';
+          const codigo = r.Codigo_Confirmacion || '—';
+          const cantidad = r.Cantidad_Personas || 1;
+          return `
+            <div class="lookup-card">
+              <div class="lookup-card-header">
+                <span class="lookup-card-title">${esc(r.Titulo_Evento || 'Evento')}</span>
+                <span class="lookup-card-status ${estadoClass}">${esc(estado)}</span>
+              </div>
+              <div class="lookup-card-meta">
+                📅 Reservado el: ${formatDate(r.Fecha_Reserva)}<br>
+                👤 ${esc(r.Nombre || '')}<br>
+                👥 ${esc(String(cantidad))} persona${parseInt(cantidad) > 1 ? 's' : ''}
+              </div>
+              ${codigo !== '—' ? `
+                <div class="lookup-qr-wrap">
+                  <div class="lookup-qr-code">${esc(codigo)}</div>
+                  <div class="lookup-qr-box" id="lookupQR_${i}"></div>
+                  <p style="font-size:0.8rem; color:#7a7570; margin-top:8px;">Muestra este QR al llegar</p>
+                </div>` : ''}
+            </div>`;
+        }).join('');
 
-    // Sort by date descending (most recent first)
-    misReservas.sort((a, b) => (b.Fecha_Reserva || '').localeCompare(a.Fecha_Reserva || ''));
-
-    resultsDiv.innerHTML = `
-      <p style="color:#7a7570; font-size:0.85rem; margin-bottom:16px;">
-        Se encontraron <strong style="color:#f5f0e8;">${misReservas.length}</strong> reserva${misReservas.length > 1 ? 's' : ''}
-      </p>` +
-      misReservas.map((r, i) => {
-        const estado = (r.Estado || 'Pendiente').trim();
-        const estadoClass = estado.toLowerCase() === 'confirmada' ? 'confirmada' : 'pendiente';
-        const codigo = r.Codigo_Confirmacion || r['Codigo_Confirmacion'] || '—';
-        const fecha = formatDate(r.Fecha_Reserva);
-        const nombre = r.Nombre_Miembro || r.Nombre || '';
-        const titulo = r.Titulo_Evento || 'Evento';
-        const cantidad = r.Cantidad_Personas || 1;
-
-        return `
-          <div class="lookup-card">
-            <div class="lookup-card-header">
-              <span class="lookup-card-title">${esc(titulo)}</span>
-              <span class="lookup-card-status ${estadoClass}">${esc(estado)}</span>
-            </div>
-            <div class="lookup-card-meta">
-              📅 Reservado el: ${fecha}<br>
-              👤 ${esc(nombre)}<br>
-              👥 ${cantidad} persona${parseInt(cantidad) > 1 ? 's' : ''}
-            </div>
-            ${codigo !== '—' ? `
-              <div class="lookup-qr-wrap">
-                <div class="lookup-qr-code">${esc(codigo)}</div>
-                <div class="lookup-qr-box" id="lookupQR_${i}"></div>
-                <p style="font-size:0.8rem; color:#7a7570; margin-top:8px;">Muestra este QR al llegar</p>
-              </div>` : ''}
-          </div>`;
-      }).join('');
-
-    // Generate QR codes for each reservation
-    setTimeout(() => {
-      misReservas.forEach((r, i) => {
-        const codigo = r.Codigo_Confirmacion;
-        if (!codigo) return;
-        const qrBox = document.getElementById(`lookupQR_${i}`);
-        if (!qrBox) return;
-        qrBox.innerHTML = '';
-        new QRCode(qrBox, {
-          text: `TRIKLES|${codigo}|${r.ID_Evento || ''}|${r.Nombre_Miembro || r.Nombre || ''}|${r.Cantidad_Personas || 1}`,
-          width: 180, height: 180,
-          colorDark: '#1a1a1a', colorLight: '#ffffff',
-          correctLevel: QRCode.CorrectLevel.M,
+      setTimeout(() => {
+        misReservas.forEach((r, i) => {
+          if (!r.Codigo_Confirmacion) return;
+          makeQR(`lookupQR_${i}`, `TRIKLES|${r.Codigo_Confirmacion}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}`, 180);
         });
-      });
-    }, 100);
-
+      }, 100);
+    }
   } catch (err) {
     console.error('Error buscando reservas:', err);
-    resultsDiv.innerHTML = `
-      <div style="text-align:center; padding:24px 0; color:#dc2626;">
-        <p>Error al buscar. Intenta de nuevo.</p>
-      </div>`;
+    resultsDiv.innerHTML = `<div style="text-align:center; padding:24px 0; color:#dc2626;"><p>Error al buscar. Intenta de nuevo.</p></div>`;
   }
 
   btn.disabled = false;
   btn.textContent = 'Buscar mis reservas';
 }
+
+// ============ PWA (instalable + offline shell) ============
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW no registrado:', err));
+  });
+}
+window.addEventListener('hashchange', handleDeepLink);
 
 // ============ INIT ============
 loadData();

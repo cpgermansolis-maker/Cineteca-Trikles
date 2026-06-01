@@ -1,0 +1,16 @@
+{
+  "name": "Cineteca Trikles",
+  "short_name": "Trikles",
+  "description": "El cine como excusa para encontrarnos. Cartelera, funciones privadas y eventos culturales en la casa del arte.",
+  "lang": "es-MX",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f2ed",
+  "theme_color": "#1a1a1a",
+  "icons": [
+    { "src": "logo.png.jpeg", "sizes": "192x192", "type": "image/jpeg", "purpose": "any" },
+    { "src": "logo.png.jpeg", "sizes": "512x512", "type": "image/jpeg", "purpose": "any" }
+  ]
+}
