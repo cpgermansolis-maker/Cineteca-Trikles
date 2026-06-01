@@ -666,6 +666,17 @@ function renderEvents() {
 function renderImpact() {
   const grid = document.getElementById('impactGrid');
   if (!impacto.length) {
+    // Si aún no hay registros de impacto pero sí una "causa del mes"
+    // configurada, mostramos esa información en lugar del placeholder vacío.
+    if (config.causa_actual) {
+      grid.innerHTML = `
+        <div class="impact-card">
+          <div class="impact-category">🌱 Causa del mes</div>
+          <div class="impact-desc">${esc(config.causa_actual)}</div>
+          <div class="impact-beneficiary">🤝 Gracias por ser parte de la comunidad</div>
+        </div>`;
+      return;
+    }
     grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🌱</div><p>Próximamente información de impacto.</p></div>';
     return;
   }
