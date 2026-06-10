@@ -4,867 +4,913 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Cineteca Trikles · La casa del arte</title>
-<meta name="description" content="Cineteca Trikles: el cine como excusa para encontrarnos. Cartelera, funciones privadas y eventos culturales en la casa del arte.">
-<meta name="theme-color" content="#1a1a1a">
+<meta name="description" content="El cine como excusa para encontrarnos. Cartelera curada, funciones privadas, dulcería y eventos culturales en la casa del arte.">
+<meta name="theme-color" content="#F6F3EC">
 
-<!-- ====== REDES / COMPARTIR (Open Graph + Twitter) ====== -->
+<!-- Redes / compartir -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Cineteca Trikles">
 <meta property="og:title" content="Cineteca Trikles · La casa del arte">
-<meta property="og:description" content="El cine como excusa para encontrarnos. Reserva tu lugar en la cartelera o crea tu propia experiencia.">
+<meta property="og:description" content="El cine como excusa para encontrarnos. Reserva tu lugar o crea tu propia función.">
 <meta property="og:image" content="logo.png.jpeg">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Cineteca Trikles · La casa del arte">
 <meta name="twitter:description" content="El cine como excusa para encontrarnos.">
 <meta name="twitter:image" content="logo.png.jpeg">
 
-<!-- ====== PWA (instalable) ====== -->
+<!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="logo.png.jpeg">
 <link rel="icon" href="logo.png.jpeg">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
 <style>
-/* ============ RESET & BASE ============ */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
-  --bg: #f5f2ed; --surface: #eeebe5; --card: #1a1a1a; --card-hover: #252525;
-  --border: #e0dbd4; --text: #1a1a1a; --text-muted: #8a7a6a; --text-dim: #a09585;
-  --card-text: #f5f0e8; --card-text-muted: #7a7570; --card-border: #2a2a2a;
-  --accent: #c9a96e; --accent-light: #c9a96e; --accent-dark: #a08545;
-  --green: #059669; --red: #dc2626; --purple: #7c3aed;
-  --radius: 12px; --radius-sm: 8px;
+/* ============ TOKENS ============ */
+:root{
+  --cream:#F6F3EC; --surface:#FFFDF8; --ink:#171511; --red:#C8311B; --yellow:#F2B705;
+  --amber:#B98A00; --warm-gray:#877F70; --mid-gray:#5C564A; --hairline:#E0D9C9;
+  --input-border:#D6CFBE; --beige:#ECE7DB; --cream-dim:#C9C0AC; --hairline-dark:#3A352B;
+  --light-on-dark:#B5AD9D; --gray-on-dark:#8A8275;
 }
-html { scroll-behavior: smooth; }
-body {
-  font-family: 'Inter', -apple-system, sans-serif; background: var(--bg);
-  color: var(--text); line-height: 1.6; min-height: 100vh;
-}
-a { color: var(--accent-dark); text-decoration: none; }
-img { max-width: 100%; }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Archivo',sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;min-height:100vh;line-height:1.5;}
+::selection{background:var(--ink);color:var(--cream);}
+img{max-width:100%;display:block;}
+a{color:inherit;text-decoration:none;}
+button{font-family:inherit;}
+.serif{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;}
+:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
 
-/* ============ LOOKUP BUTTON ============ */
-.hero-lookup { display: inline-block; margin-top: 16px; }
-.hero-lookup button {
-  padding: 10px 24px; border-radius: 20px; border: 1px solid var(--accent);
-  background: transparent; color: var(--accent-dark); cursor: pointer;
-  font-family: inherit; font-size: 0.9rem; font-weight: 600; transition: all 0.2s;
-}
-.hero-lookup button:hover { background: var(--accent); color: #1a1a1a; }
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:none;}}
+@keyframes reelSpin{to{transform:rotate(360deg);}}
+@keyframes marqueeScroll{from{transform:translateX(0);}to{transform:translateX(-50%);}}
+@keyframes popcornPop{0%,100%{transform:translateY(0) scale(1) rotate(0deg);}30%{transform:translateY(-16px) scale(1.18) rotate(-10deg);}55%{transform:translateY(0) scale(1) rotate(4deg);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.001ms !important;animation-iteration-count:1 !important;scroll-behavior:auto !important;}}
 
-/* ============ LOOKUP MODAL ============ */
-.lookup-results { margin-top: 24px; }
-.lookup-card {
-  background: #111; border: 1px solid #2a2a2a; border-radius: var(--radius-sm);
-  padding: 20px; margin-bottom: 16px;
-}
-.lookup-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; gap: 12px; }
-.lookup-card-title { font-weight: 700; font-size: 1.05rem; }
-.lookup-card-status {
-  padding: 3px 10px; border-radius: 10px; font-size: 0.7rem; font-weight: 600;
-  text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
-}
-.lookup-card-status.confirmada { background: #064e3b; color: #6ee7b7; }
-.lookup-card-status.pendiente { background: #5c3a0e; color: #fcd34d; }
-.lookup-card-meta { font-size: 0.85rem; color: #7a7570; margin-bottom: 16px; line-height: 1.8; }
-.lookup-qr-wrap { text-align: center; }
-.lookup-qr-code { font-family: monospace; font-size: 1.1rem; font-weight: 700; color: var(--accent-light); margin-bottom: 8px; }
-.lookup-qr-box { display: inline-block; padding: 12px; background: #fff; border-radius: var(--radius-sm); }
-.lookup-qr-box img { display: none !important; }
-.lookup-qr-box canvas { display: block !important; }
-
-/* ============ LAYOUT ============ */
-.container { max-width: 960px; margin: 0 auto; padding: 0 20px; }
-section { padding: 48px 0; }
+.container{max-width:1280px;margin:0 auto;padding-left:48px;padding-right:48px;}
 
 /* ============ HEADER ============ */
-.hero {
-  text-align: center; padding: 80px 20px 60px;
-  background: var(--bg); border-bottom: 1px solid var(--border);
-}
-.hero-logo { max-width: 280px; margin: 0 auto 16px !important; display: block; }
-.hero-brand {
-  font-family: 'Playfair Display', serif; font-size: clamp(2rem, 6vw, 3.2rem);
-  font-weight: 700; color: var(--text); letter-spacing: 0.02em;
-  margin-bottom: 12px; display: none;
-}
-.hero-tagline {
-  font-size: clamp(1rem, 3vw, 1.25rem); color: var(--text-muted);
-  font-style: italic; font-family: 'Playfair Display', serif; max-width: 500px;
-  margin: 0 auto 24px;
-}
-.hero-schedule {
-  display: inline-block; padding: 8px 20px; border: 1px solid var(--border);
-  border-radius: 20px; font-size: 0.85rem; color: var(--text-muted);
-}
+.site-header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:18px 48px;background:rgba(246,243,236,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--hairline);}
+.brand{display:flex;align-items:baseline;gap:12px;}
+.brand-name{font-size:15px;font-weight:900;letter-spacing:.06em;}
+.brand-sub{font-size:14px;color:var(--warm-gray);}
+.site-nav{display:flex;align-items:center;gap:28px;}
+.nav-link{font-size:12px;font-weight:600;letter-spacing:.12em;transition:color .15s;}
+.nav-link:hover{color:var(--red);}
+.btn-mireserva{font-size:11px;font-weight:700;letter-spacing:.12em;padding:10px 18px;background:transparent;border:1px solid var(--ink);color:var(--ink);cursor:pointer;border-radius:2px;transition:all .15s;}
+.btn-mireserva:hover{background:var(--ink);color:var(--cream);}
 
-/* ============ NAV TABS ============ */
-.nav-tabs {
-  display: flex; justify-content: center; gap: 8px; padding: 16px 20px;
-  background: var(--surface); border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 100; flex-wrap: wrap;
-}
-.nav-tab {
-  padding: 8px 20px; border-radius: 20px; border: 1px solid var(--border);
-  background: transparent; color: var(--text-muted); cursor: pointer;
-  font-size: 0.9rem; font-family: inherit; transition: all 0.2s;
-}
-.nav-tab:hover { border-color: var(--text); color: var(--text); }
-.nav-tab.active { background: var(--text); color: var(--bg); border-color: var(--text); font-weight: 600; }
+/* ============ HERO ============ */
+.hero{padding:96px 48px 72px;max-width:1280px;margin:0 auto;}
+.hero-logo{height:clamp(180px,28vw,320px);mix-blend-mode:multiply;margin:0 auto 36px;animation:fadeUp .7s ease both;}
+.hero-title{font-weight:900;font-size:clamp(44px,8.5vw,124px);line-height:.94;letter-spacing:-.02em;text-transform:uppercase;margin-bottom:32px;animation:fadeUp .7s .08s ease both;}
+.hero-title .serif{text-transform:lowercase;letter-spacing:0;color:var(--red);}
+.hero-row{display:flex;align-items:center;gap:24px;flex-wrap:wrap;animation:fadeUp .7s .16s ease both;}
+.hero-intro{max-width:440px;font-size:16px;line-height:1.6;color:var(--mid-gray);}
+.pill-yellow{font-size:12px;font-weight:700;letter-spacing:.1em;padding:10px 20px;background:var(--yellow);border-radius:2px;color:var(--ink);white-space:nowrap;}
+.reel{margin-left:auto;width:104px;height:104px;border-radius:50%;background:var(--ink);position:relative;animation:reelSpin 9s linear infinite;flex:none;}
+.reel i{position:absolute;border-radius:50%;background:var(--cream);}
 
-/* ============ SECTION TITLES ============ */
-.section-title { font-family: 'Playfair Display', serif; font-size: 1.8rem; margin-bottom: 8px; color: var(--text); }
-.section-subtitle { color: var(--text-muted); margin-bottom: 24px; font-size: 0.95rem; }
+/* ============ MARQUEE ============ */
+.marquee{background:var(--ink);overflow:hidden;padding:14px 0;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);}
+.marquee-track{display:flex;width:max-content;animation:marqueeScroll 26s linear infinite;}
+.marquee-group{display:flex;gap:40px;padding-right:40px;align-items:center;}
+.marquee-group span{font-size:13px;white-space:nowrap;}
+.mq-word{font-weight:800;letter-spacing:.2em;color:var(--cream);}
+.mq-serif{font-family:'Instrument Serif',serif;font-style:italic;font-size:15px;color:var(--yellow);}
+.mq-dot{color:var(--red);}
+.mq-pop{color:var(--yellow);}
 
-/* ============ FILTER BAR ============ */
-.filter-bar { margin-bottom: 28px; }
-.search-wrap { position: relative; margin-bottom: 14px; }
-.search-input {
-  width: 100%; padding: 12px 16px 12px 42px; border-radius: 24px;
-  border: 1px solid var(--border); background: #fff; color: var(--text);
-  font-family: inherit; font-size: 0.95rem; transition: border-color 0.2s;
-}
-.search-input:focus { outline: none; border-color: var(--accent); }
-.search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--text-dim); }
-.chips { display: flex; gap: 8px; flex-wrap: wrap; }
-.chip {
-  padding: 6px 16px; border-radius: 18px; border: 1px solid var(--border);
-  background: transparent; color: var(--text-muted); cursor: pointer;
-  font-family: inherit; font-size: 0.82rem; font-weight: 500; transition: all 0.2s;
-}
-.chip:hover { border-color: var(--text); color: var(--text); }
-.chip.active { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+/* ============ SECTION LABEL ROW ============ */
+.section{max-width:1280px;margin:0 auto;padding:64px 48px 96px;}
+.label-row{display:flex;align-items:baseline;justify-content:space-between;border-top:1px solid var(--ink);padding-top:16px;margin-bottom:28px;gap:16px;flex-wrap:wrap;}
+.label{font-size:12px;font-weight:700;letter-spacing:.18em;}
+.label-yellow{background:var(--yellow);padding:6px 12px;white-space:nowrap;}
+.label-note{font-size:16px;color:var(--warm-gray);}
 
-/* ============ EVENT CARDS ============ */
-.events-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-.event-card {
-  background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius);
-  overflow: hidden; cursor: pointer; transition: all 0.25s; color: var(--card-text);
-  display: flex; flex-direction: column; text-align: left; width: 100%;
-  font-family: inherit; padding: 0;
-}
-.event-card:hover { background: var(--card-hover); transform: translateY(-2px); border-color: #333; }
-.event-card-img { width: 100%; height: 180px; object-fit: cover; display: block; background: #111; }
-.event-card-header { padding: 20px 20px 12px; flex: 1; }
-.event-type-badge {
-  display: inline-block; padding: 3px 10px; border-radius: 12px;
-  font-size: 0.75rem; font-weight: 600; text-transform: uppercase;
-  letter-spacing: 0.05em; margin-bottom: 10px;
-}
-.event-card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 6px; line-height: 1.3; }
-.event-card-desc {
-  font-size: 0.85rem; color: var(--card-text-muted); margin-bottom: 12px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
-}
-.event-card-footer {
-  display: flex; justify-content: space-between; align-items: center;
-  padding: 14px 20px; border-top: 1px solid var(--card-border); font-size: 0.85rem;
-}
-.event-date { color: var(--accent-light); font-weight: 600; }
-.event-spots { color: var(--card-text-muted); }
-.event-spots.low { color: #fbbf24; font-weight: 600; }
-.event-spots.full { color: var(--red); font-weight: 600; }
+/* ============ FEATURED ============ */
+.featured-still{width:100%;height:540px;background:var(--beige);object-fit:cover;display:flex;align-items:center;justify-content:center;color:var(--cream-dim);font-weight:800;letter-spacing:.1em;text-transform:uppercase;font-size:13px;}
+.featured-grid{display:grid;grid-template-columns:1fr auto;gap:32px;align-items:end;margin-top:28px;}
+.featured-cat{font-size:12px;font-weight:700;letter-spacing:.16em;color:var(--red);margin-bottom:10px;}
+.featured-title{font-size:clamp(34px,4.5vw,60px);font-weight:900;letter-spacing:-.01em;line-height:1;text-transform:uppercase;margin-bottom:12px;}
+.featured-synopsis{max-width:560px;font-size:15px;line-height:1.6;color:var(--mid-gray);}
+.featured-side{display:flex;flex-direction:column;align-items:flex-end;gap:14px;}
+.featured-meta{font-size:13px;font-weight:600;color:var(--warm-gray);}
+.btn-ink{font-size:13px;font-weight:700;letter-spacing:.12em;padding:18px 40px;background:var(--ink);color:var(--cream);border:none;cursor:pointer;border-radius:2px;transition:background .15s;text-transform:uppercase;}
+.btn-ink:hover{background:var(--red);}
+.btn-ink:disabled{opacity:.5;cursor:not-allowed;}
 
-/* ============ MODAL ============ */
-.modal-overlay {
-  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85);
-  z-index: 200; justify-content: center; align-items: flex-start;
-  padding: 40px 16px; overflow-y: auto;
-}
-.modal-overlay.open { display: flex; }
-.modal {
-  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius);
-  max-width: 560px; width: 100%; padding: 32px; position: relative;
-  animation: slideUp 0.3s ease; color: #f5f0e8;
-}
-@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
-.modal-close {
-  position: absolute; top: 16px; right: 16px; width: 32px; height: 32px;
-  border-radius: 50%; border: 1px solid #333; background: #252525;
-  color: #f5f0e8; cursor: pointer; font-size: 1.1rem; display: flex;
-  align-items: center; justify-content: center; transition: all 0.2s;
-}
-.modal-close:hover { background: var(--accent); color: #1a1a1a; }
-.modal h2 { font-family: 'Playfair Display', serif; font-size: 1.5rem; margin-bottom: 6px; }
-.modal-type { margin-bottom: 16px; }
-.modal-meta {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
-  margin-bottom: 20px; padding: 16px; background: #111; border-radius: var(--radius-sm);
-}
-.meta-item label { display: block; font-size: 0.75rem; color: #7a7570; text-transform: uppercase; letter-spacing: 0.05em; }
-.meta-item span { font-weight: 600; font-size: 0.95rem; }
-.modal-desc { color: #a09890; margin-bottom: 20px; font-size: 0.95rem; line-height: 1.7; }
-.modal-actions { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-.modal-actions .btn-icon { flex: 1; min-width: 120px; }
+/* ============ CARTELERA ============ */
+.chips{display:flex;gap:8px;flex-wrap:wrap;}
+.chip{font-size:11px;font-weight:700;letter-spacing:.1em;padding:8px 16px;border-radius:2px;cursor:pointer;text-transform:uppercase;background:transparent;color:var(--warm-gray);border:1px solid var(--hairline);transition:all .15s;}
+.chip:hover{border-color:var(--ink);color:var(--ink);}
+.chip.active{background:var(--ink);color:var(--cream);border-color:var(--ink);}
+.events-list{display:flex;flex-direction:column;}
+.event-row{display:grid;grid-template-columns:64px 96px 1fr auto;gap:28px;align-items:center;text-align:left;width:100%;padding:24px 0;background:transparent;border:none;border-top:1px solid var(--hairline);cursor:pointer;color:var(--ink);transition:background .15s;}
+.event-row:hover{background:var(--surface);}
+.event-num{font-family:'Instrument Serif',serif;font-style:italic;font-size:28px;color:var(--cream-dim);}
+.poster{width:96px;height:128px;background:var(--beige);object-fit:cover;}
+.event-main{display:flex;flex-direction:column;gap:6px;min-width:0;}
+.event-type{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--red);}
+.event-title{font-size:24px;font-weight:800;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase;}
+.event-desc{font-size:13.5px;color:var(--warm-gray);line-height:1.5;max-width:520px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.event-side{display:flex;flex-direction:column;align-items:flex-end;gap:6px;}
+.event-date{font-size:14px;font-weight:700;white-space:nowrap;}
+.event-spots{font-size:12.5px;font-weight:600;white-space:nowrap;}
+.event-cta{font-size:12px;font-weight:700;letter-spacing:.12em;border-bottom:1px solid var(--ink);padding-bottom:2px;margin-top:6px;}
 
-/* ============ FORM ============ */
-.form-group { margin-bottom: 16px; }
-.form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: #b0a89e; }
-.form-input, .form-textarea {
-  width: 100%; padding: 12px 16px; background: #111; border: 1px solid #333;
-  border-radius: var(--radius-sm); color: #f5f0e8; font-family: inherit;
-  font-size: 0.95rem; transition: border-color 0.2s;
-}
-.form-input:focus, .form-textarea:focus { outline: none; border-color: var(--accent); }
-.form-textarea { resize: vertical; min-height: 80px; }
-.form-input::placeholder, .form-textarea::placeholder { color: #555; }
-select.form-input { appearance: none; cursor: pointer; }
+/* ============ EXPERIENCIAS (dark) ============ */
+.dark{background:var(--ink);color:var(--cream);}
+.dark .label-row{border-top-color:var(--cream);}
+.dark .label-note{color:var(--gray-on-dark);}
+.section-h2{font-size:clamp(34px,5vw,72px);font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:1;margin-bottom:48px;}
+.section-h2 .serif{text-transform:lowercase;}
+.exp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--hairline-dark);border:1px solid var(--hairline-dark);}
+.exp-cell{background:var(--ink);padding:40px 32px;display:flex;flex-direction:column;gap:16px;}
+.exp-num{font-family:'Instrument Serif',serif;font-style:italic;font-size:22px;color:var(--gray-on-dark);}
+.exp-name{font-size:26px;font-weight:800;text-transform:uppercase;}
+.exp-price{font-size:44px;font-weight:900;}
+.exp-price small{font-size:14px;font-weight:500;color:var(--gray-on-dark);}
+.exp-desc{font-size:14.5px;line-height:1.6;color:var(--light-on-dark);flex:1;}
+.exp-link{align-self:flex-start;font-size:12px;font-weight:700;letter-spacing:.12em;padding:0 0 4px;background:transparent;border:none;border-bottom:1px solid var(--cream);color:var(--cream);cursor:pointer;transition:all .15s;}
+.exp-link:hover{color:var(--yellow);border-bottom-color:var(--yellow);}
 
-.btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-  padding: 14px 28px; border-radius: var(--radius-sm); border: none;
-  font-family: inherit; font-size: 1rem; font-weight: 700; cursor: pointer;
-  transition: all 0.2s; width: 100%;
-}
-.btn-primary { background: var(--accent); color: #1a1a1a; }
-.btn-primary:hover { background: #d4b87a; }
-.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-.btn-secondary { background: #252525; color: #f5f0e8; border: 1px solid #333; }
-.btn-secondary:hover { border-color: var(--accent); }
-.btn-icon { padding: 10px 16px; font-size: 0.85rem; font-weight: 600; width: auto; }
+/* ============ TIENDA ============ */
+.section-h2.light .serif{color:var(--red);}
+.shop-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:1px;background:var(--hairline);border:1px solid var(--hairline);}
+.product{background:var(--cream);padding:24px;display:flex;flex-direction:column;gap:12px;}
+.product-photo{width:100%;height:180px;background:var(--beige);object-fit:cover;display:flex;align-items:center;justify-content:center;color:var(--cream-dim);font-size:30px;}
+.product-tag{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--red);margin-top:6px;}
+.product-name{font-size:21px;font-weight:800;text-transform:uppercase;line-height:1.1;}
+.product-desc{font-size:13.5px;line-height:1.55;color:var(--warm-gray);flex:1;}
+.product-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:4px;}
+.product-price{font-size:26px;font-weight:900;}
+.product-price small{font-size:12px;font-weight:500;color:var(--warm-gray);}
+.btn-add{font-size:11px;font-weight:700;letter-spacing:.1em;padding:11px 18px;background:var(--ink);color:var(--cream);border:none;cursor:pointer;border-radius:2px;white-space:nowrap;transition:background .15s;}
+.btn-add:hover{background:var(--red);}
+.stepper{display:flex;align-items:center;}
+.step-btn{width:36px;height:36px;font-size:16px;font-weight:700;cursor:pointer;}
+.step-minus{background:transparent;border:1px solid var(--ink);color:var(--ink);border-radius:2px 0 0 2px;transition:all .15s;}
+.step-minus:hover{background:var(--red);border-color:var(--red);color:var(--cream);}
+.step-qty{width:38px;height:36px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;border-top:1px solid var(--ink);border-bottom:1px solid var(--ink);}
+.step-plus{background:var(--ink);border:1px solid var(--ink);color:var(--cream);border-radius:0 2px 2px 0;transition:all .15s;}
+.step-plus:hover{background:var(--red);border-color:var(--red);}
 
-/* ============ QR CONFIRMATION ============ */
-.confirmation { text-align: center; }
-.confirmation h2 { color: var(--green); margin-bottom: 8px; }
-.confirmation p { color: #a09890; margin-bottom: 20px; }
-.qr-container { display: inline-block; padding: 16px; background: #fff; border-radius: var(--radius); margin-bottom: 16px; }
-.qr-container img { display: none !important; }
-.qr-container canvas { display: block !important; }
-.qr-code-text { font-family: monospace; font-size: 1.3rem; font-weight: 700; color: var(--accent-light); margin-bottom: 8px; }
-.qr-instructions { font-size: 0.85rem; color: #7a7570; margin-top: 12px; }
+/* ============ CART BAR ============ */
+.cart-bar{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:150;display:none;align-items:center;gap:20px;background:var(--ink);color:var(--cream);padding:14px 14px 14px 26px;border-radius:2px;box-shadow:0 16px 40px rgba(23,21,17,.35);animation:fadeUp .3s ease both;}
+.cart-bar.show{display:flex;}
+.cart-bar-text{font-size:14px;font-weight:700;white-space:nowrap;}
+.btn-pay{font-size:12px;font-weight:800;letter-spacing:.12em;padding:13px 28px;background:var(--yellow);color:var(--ink);border:none;cursor:pointer;border-radius:2px;white-space:nowrap;transition:all .15s;}
+.btn-pay:hover{background:var(--red);color:var(--cream);}
 
-/* ============ IMPACT ============ */
-.impact-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
-.impact-card {
-  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius);
-  padding: 20px; border-left: 4px solid var(--green); color: #f5f0e8;
-}
-.impact-category { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--green); font-weight: 600; margin-bottom: 8px; }
-.impact-desc { font-size: 0.9rem; color: #7a7570; margin-bottom: 8px; }
-.impact-beneficiary { font-size: 0.85rem; font-weight: 600; }
-.impact-amount { color: var(--accent-light); font-weight: 700; margin-top: 4px; }
+/* ============ IMPACTO ============ */
+.impact-list{display:flex;flex-direction:column;}
+.impact-row{display:grid;grid-template-columns:200px 1fr auto;gap:24px;padding:20px 0;border-top:1px solid var(--hairline);align-items:baseline;}
+.impact-row:last-child{border-bottom:1px solid var(--hairline);}
+.impact-label{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--red);}
+.impact-desc{font-size:16px;color:var(--mid-gray);}
+.impact-val{font-size:14px;font-weight:700;white-space:nowrap;}
+.impact-h2{max-width:880px;font-size:clamp(28px,3.6vw,48px);font-weight:400;font-family:'Instrument Serif',serif;line-height:1.2;margin-bottom:48px;}
+.impact-h2 em{color:var(--red);}
+
+/* ============ FILM STRIP ============ */
+.film-strip{background:var(--ink);padding:10px 0;}
+.film-perf{height:12px;background:repeating-linear-gradient(90deg,#F6F3EC 0px,#F6F3EC 14px,#171511 14px,#171511 34px);}
+.film-perf+.film-perf{margin-top:18px;}
 
 /* ============ FOOTER ============ */
-footer { text-align: center; padding: 40px 20px; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 0.85rem; }
-footer .brand-small { color: var(--text); font-weight: 600; }
+.footer-grid{max-width:1280px;margin:0 auto;padding:72px 48px 48px;display:grid;grid-template-columns:1fr auto;gap:48px;align-items:start;}
+.footer-h2{font-size:clamp(40px,5vw,64px);font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:1;margin-bottom:20px;}
+.footer-tag{font-family:'Instrument Serif',serif;font-style:italic;font-size:20px;color:var(--warm-gray);}
+.footer-contact{display:flex;flex-direction:column;gap:14px;font-size:15px;line-height:1.5;min-width:280px;}
+.fc-label{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--red);display:block;margin-bottom:2px;}
+.footer-bar{max-width:1280px;margin:0 auto;padding:24px 48px 40px;display:flex;align-items:center;justify-content:space-between;gap:16px;border-top:1px solid var(--hairline);}
+.footer-bar span{font-size:12px;color:var(--warm-gray);}
+.footer-bar strong{color:var(--ink);}
 
-/* ============ LOADING / SKELETON ============ */
-.skeleton-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-.skeleton-card { background: var(--card); border: 1px solid var(--card-border); border-radius: var(--radius); overflow: hidden; height: 320px; }
-.skeleton-img { height: 180px; background: linear-gradient(90deg,#222 25%,#2c2c2c 37%,#222 63%); background-size: 400% 100%; animation: shimmer 1.4s infinite; }
-.skeleton-line { height: 12px; margin: 16px 20px 0; border-radius: 6px; background: linear-gradient(90deg,#222 25%,#2c2c2c 37%,#222 63%); background-size: 400% 100%; animation: shimmer 1.4s infinite; }
-.skeleton-line.short { width: 50%; }
-@keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: -100% 0; } }
-.spinner { width: 32px; height: 32px; border: 3px solid #d4cec6; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+/* ============ MODALS ============ */
+.overlay{display:none;position:fixed;inset:0;background:rgba(23,21,17,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:200;justify-content:center;align-items:center;padding:24px;overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:var(--cream);width:100%;max-width:520px;padding:44px;border-radius:2px;position:relative;animation:fadeUp .3s ease both;max-height:90vh;overflow:auto;}
+.modal-sm{max-width:460px;}
+.modal-close{position:absolute;top:18px;right:18px;width:34px;height:34px;border:1px solid var(--hairline);background:transparent;color:var(--ink);cursor:pointer;font-size:16px;border-radius:2px;transition:all .15s;display:flex;align-items:center;justify-content:center;}
+.modal-close:hover{background:var(--ink);color:var(--cream);}
+.modal-cat{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--red);margin-bottom:10px;}
+.modal-title{font-size:30px;font-weight:900;text-transform:uppercase;letter-spacing:-.01em;line-height:1.05;margin-bottom:6px;}
+.modal-meta{font-size:14px;font-weight:600;color:var(--warm-gray);margin-bottom:24px;}
+.field{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--mid-gray);margin-bottom:16px;}
+.field input,.field select{font-family:'Archivo',sans-serif;font-size:15px;font-weight:500;letter-spacing:0;padding:13px 16px;border:1px solid var(--input-border);background:var(--surface);color:var(--ink);border-radius:2px;}
+.field input:focus,.field select:focus{outline:none;border-color:var(--red);}
+.btn-primary{width:100%;font-size:13px;font-weight:700;letter-spacing:.12em;padding:17px;background:var(--ink);color:var(--cream);border:none;cursor:pointer;border-radius:2px;transition:background .15s;text-transform:uppercase;}
+.btn-primary:hover{background:var(--red);}
+.btn-primary:disabled{opacity:.5;cursor:not-allowed;}
 
-/* ============ EMPTY / ERROR STATE ============ */
-.empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); grid-column: 1 / -1; }
-.empty-state-icon { font-size: 3rem; margin-bottom: 12px; }
+/* confirmation */
+.confirm{text-align:center;padding:12px 0;}
+.popcorn{display:flex;justify-content:center;gap:10px;font-size:30px;margin-bottom:14px;}
+.popcorn span{display:inline-block;animation:popcornPop 1.6s ease-in-out infinite;}
+.popcorn span:nth-child(2){animation-delay:.25s;}
+.popcorn span:nth-child(3){animation-delay:.5s;}
+.confirm-serif{font-family:'Instrument Serif',serif;font-style:italic;font-size:22px;color:var(--red);margin-bottom:8px;}
+.confirm-h2{font-size:30px;font-weight:900;text-transform:uppercase;margin-bottom:8px;}
+.confirm-sub{font-size:14px;color:var(--warm-gray);margin-bottom:24px;}
+.code-box{display:inline-block;padding:24px 36px;border:1px solid var(--ink);border-radius:2px;margin-bottom:16px;}
+.code-label{font-size:11px;font-weight:700;letter-spacing:.16em;color:var(--warm-gray);margin-bottom:6px;}
+.code-val{font-size:30px;font-weight:900;letter-spacing:.08em;}
+.qr-box{display:inline-block;padding:12px;background:#fff;border-radius:2px;margin-bottom:14px;}
+.qr-box canvas{display:block;}
+.cal-link{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.1em;border-bottom:1px solid var(--ink);padding-bottom:2px;background:none;border-top:none;border-left:none;border-right:none;cursor:pointer;color:var(--ink);margin-top:4px;}
+.cal-link:hover{color:var(--red);border-bottom-color:var(--red);}
+.confirm-note{font-size:13px;color:var(--warm-gray);margin-top:12px;}
 
-/* ============ TOAST ============ */
-.toast {
-  position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(120%);
-  background: #1a1a1a; color: #f5f0e8; border: 1px solid #333; border-radius: 24px;
-  padding: 12px 22px; font-size: 0.9rem; z-index: 400; box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-  transition: transform 0.3s ease; max-width: 90vw; text-align: center;
-}
-.toast.show { transform: translateX(-50%) translateY(0); }
-.toast.error { border-color: var(--red); }
-.toast.success { border-color: var(--green); }
+/* order list */
+.order-line{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--hairline);font-size:14.5px;}
+.order-line .qn{color:var(--warm-gray);font-weight:500;}
+.order-total{display:flex;justify-content:space-between;gap:16px;padding:14px 0;border-top:1px solid var(--ink);font-size:16px;}
+.order-total .t{font-weight:800;letter-spacing:.06em;}
+.order-total .v{font-weight:900;}
+
+/* lookup result */
+.lookup-card{margin-top:18px;border:1px solid var(--hairline);border-radius:2px;padding:18px 20px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
+.lookup-card .lt{font-size:15px;font-weight:800;text-transform:uppercase;}
+.lookup-card .lm{font-size:12.5px;color:var(--warm-gray);margin-top:2px;}
+.lookup-card .ls{font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--red);text-align:right;}
+.lookup-card .lc{font-size:17px;font-weight:900;letter-spacing:.06em;text-align:right;}
+.lookup-qr{margin-top:10px;}
+.lookup-qr canvas{display:block;}
+
+/* loading / empty */
+.loading{padding:48px 0;text-align:center;color:var(--warm-gray);}
+.spinner{width:28px;height:28px;border:3px solid var(--hairline);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
+.empty{padding:48px 0;text-align:center;color:var(--warm-gray);}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(140%);background:var(--ink);color:var(--cream);border-radius:2px;padding:14px 24px;font-size:14px;font-weight:600;z-index:400;box-shadow:0 16px 40px rgba(23,21,17,.35);transition:transform .3s ease;max-width:90vw;text-align:center;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.error{border-bottom:3px solid var(--red);}
+.toast.success{border-bottom:3px solid var(--yellow);}
 
 /* ============ RESPONSIVE ============ */
-@media (max-width: 600px) {
-  .hero { padding: 60px 20px 40px; }
-  .nav-tab { padding: 6px 14px; font-size: 0.8rem; }
-  .modal { padding: 24px 20px; }
-  .modal-meta { grid-template-columns: 1fr; }
-  section { padding: 32px 0; }
+@media (max-width:820px){
+  .container,.hero,.section,.footer-grid,.footer-bar,.site-header{padding-left:22px;padding-right:22px;}
+  .site-header{padding-top:14px;padding-bottom:14px;gap:14px;}
+  .site-nav{gap:16px;}
+  .nav-link{display:none;}
+  .section{padding-top:48px;padding-bottom:64px;}
+  .hero{padding:56px 22px 48px;}
+  .featured-still{height:300px;}
+  .featured-grid{grid-template-columns:1fr;gap:20px;align-items:start;}
+  .featured-side{align-items:flex-start;}
+  .exp-grid{grid-template-columns:1fr;}
+  .impact-row{grid-template-columns:1fr;gap:6px;}
+  .impact-val{justify-self:start;}
+  .footer-grid{grid-template-columns:1fr;gap:28px;}
+  .reel{display:none;}
+  .modal{padding:32px 24px;}
+  .event-row{grid-template-columns:72px 1fr;gap:16px;}
+  .event-num{display:none;}
+  .poster{width:72px;height:96px;}
+  .event-main{grid-column:2;}
+  .event-side{grid-column:1 / -1;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;width:100%;gap:10px;margin-top:4px;}
+  .event-cta{margin-top:0;}
 }
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
-}
-
-/* ============ EXPERIENCE CARDS ============ */
-.exp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
-.exp-card {
-  background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius);
-  padding: 28px 24px; cursor: pointer; transition: all 0.25s; color: #f5f0e8;
-  text-align: center; position: relative; overflow: hidden; font-family: inherit; width: 100%;
-}
-.exp-card:hover { transform: translateY(-3px); border-color: var(--accent); }
-.exp-card.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
-.exp-card-icon { font-size: 2.5rem; margin-bottom: 14px; display: block; }
-.exp-card-name { font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 6px; }
-.exp-card-price { font-size: 1.5rem; font-weight: 800; color: var(--accent); margin-bottom: 10px; }
-.exp-card-price span { font-size: 0.8rem; font-weight: 400; color: #7a7570; }
-.exp-card-desc { font-size: 0.85rem; color: #7a7570; line-height: 1.5; }
-.exp-card-badge {
-  display: inline-block; padding: 3px 10px; border-radius: 10px; font-size: 0.7rem;
-  font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 14px;
-}
-
-/* ============ EXPERIENCE FORM ============ */
-.exp-form-container {
-  max-width: 560px; margin: 32px auto 0; background: #1a1a1a;
-  border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 32px;
-  color: #f5f0e8; display: none;
-}
-.exp-form-container.visible { display: block; animation: slideUp 0.3s ease; }
-.exp-form-title { font-family: 'Playfair Display', serif; font-size: 1.3rem; margin-bottom: 6px; }
-.exp-form-subtitle { color: #7a7570; font-size: 0.9rem; margin-bottom: 24px; }
-.budget-box { background: #111; border: 1px solid #2a2a2a; border-radius: var(--radius-sm); padding: 16px; margin: 20px 0; text-align: center; }
-.budget-label { font-size: 0.8rem; color: #7a7570; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
-.budget-total { font-size: 2rem; font-weight: 800; color: var(--accent); }
-.budget-breakdown { font-size: 0.85rem; color: #7a7570; margin-top: 4px; }
-.public-notice { background: #1a1510; border: 1px solid #3a2a10; border-radius: var(--radius-sm); padding: 12px 16px; font-size: 0.85rem; color: #d4b06a; margin-bottom: 16px; }
-
-/* ============ HIDDEN SECTIONS ============ */
-.page { display: none; }
-.page.active { display: block; }
-.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
 </style>
 </head>
 <body>
 
-<!-- ==================== HERO ==================== -->
-<header class="hero">
-  <img class="hero-logo" id="heroLogo" src="logo.png.jpeg" alt="Cineteca Trikles - La casa del arte">
-  <div class="hero-brand">Cineteca Trikles</div>
-  <p class="hero-tagline">Aquí el cine se vive en comunidad en la casa del arte</p>
-  <div class="hero-schedule" id="heroSchedule">Cargando horario...</div>
-  <div class="hero-lookup">
-    <button type="button" onclick="openModal('lookupModal')">🔍 Consultar mi reserva</button>
-  </div>
+<!-- ============ HEADER ============ -->
+<header class="site-header">
+  <a href="#inicio" class="brand">
+    <span class="brand-name">CINETECA TRIKLES</span>
+    <span class="brand-sub serif">La casa del arte</span>
+  </a>
+  <nav class="site-nav">
+    <a href="#cartelera" class="nav-link">CARTELERA</a>
+    <a href="#experiencias" class="nav-link">EXPERIENCIAS</a>
+    <a href="#tienda" class="nav-link">TIENDA</a>
+    <a href="#impacto" class="nav-link">IMPACTO</a>
+    <a href="#contacto" class="nav-link">CONTACTO</a>
+    <button type="button" class="btn-mireserva" onclick="openLookup()">MI RESERVA</button>
+  </nav>
 </header>
 
-<!-- ==================== NAV ==================== -->
-<nav class="nav-tabs" role="tablist" aria-label="Secciones">
-  <button class="nav-tab active" role="tab" aria-selected="true" onclick="showPage('cartelera', this)">Cartelera</button>
-  <button class="nav-tab" role="tab" aria-selected="false" onclick="showPage('experiencias', this)">Experiencias</button>
-  <button class="nav-tab" role="tab" aria-selected="false" onclick="showPage('impacto', this)">Impacto</button>
-  <button class="nav-tab" role="tab" aria-selected="false" onclick="showPage('contacto', this)">Contacto</button>
-</nav>
-
-<!-- ==================== CARTELERA ==================== -->
-<div id="page-cartelera" class="page active">
-  <section>
-    <div class="container">
-      <h2 class="section-title">Cartelera</h2>
-      <p class="section-subtitle">Próximos eventos en la casa del arte</p>
-
-      <div class="filter-bar" id="filterBar" style="display:none;">
-        <div class="search-wrap">
-          <span class="search-icon" aria-hidden="true">🔍</span>
-          <input type="search" class="search-input" id="searchInput" placeholder="Buscar película o evento..." aria-label="Buscar en la cartelera" oninput="applyFilters()">
-        </div>
-        <div class="chips" id="typeChips" role="group" aria-label="Filtrar por tipo"></div>
-      </div>
-
-      <div id="eventsGrid" class="events-grid" aria-live="polite">
-        <div class="skeleton-grid">
-          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
-          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
-          <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
-        </div>
-      </div>
+<!-- ============ HERO ============ -->
+<section id="inicio" class="hero">
+  <img class="hero-logo" id="heroLogo" src="logo.png.jpeg" alt="Cineteca Trikles">
+  <h1 class="hero-title">El cine como<br><span class="serif">excusa</span> para<br>encontrarnos.</h1>
+  <div class="hero-row">
+    <p class="hero-intro" id="heroIntro">Cartelera curada, funciones privadas y eventos culturales en la casa del arte.</p>
+    <span class="pill-yellow" id="heroSchedule">MIÉ – DOM · 16:00 – 23:00</span>
+    <div class="reel" aria-hidden="true">
+      <i style="left:43px;top:43px;width:18px;height:18px;"></i>
+      <i style="left:69px;top:41px;width:22px;height:22px;"></i>
+      <i style="left:55px;top:65px;width:22px;height:22px;"></i>
+      <i style="left:27px;top:65px;width:22px;height:22px;"></i>
+      <i style="left:13px;top:41px;width:22px;height:22px;"></i>
+      <i style="left:27px;top:17px;width:22px;height:22px;"></i>
+      <i style="left:55px;top:17px;width:22px;height:22px;"></i>
     </div>
-  </section>
-</div>
-
-<!-- ==================== EXPERIENCIAS ==================== -->
-<div id="page-experiencias" class="page">
-  <section>
-    <div class="container">
-      <h2 class="section-title">Crea tu experiencia</h2>
-      <p class="section-subtitle">Elige cómo quieres vivir Trikles</p>
-
-      <div class="exp-grid" id="expGrid">
-        <button type="button" class="exp-card" onclick="selectExperience('peticion')">
-          <span class="exp-card-icon" aria-hidden="true">🎬</span>
-          <span class="exp-card-badge" style="background:#1a1520;color:#c0a8e0;">Función pública</span>
-          <div class="exp-card-name">Petición Abierta</div>
-          <div class="exp-card-price">$100 <span>por persona</span></div>
-          <div class="exp-card-desc">Tú eliges la película. La función es pública: cualquiera puede unirse.</div>
-        </button>
-
-        <button type="button" class="exp-card" onclick="selectExperience('privado')">
-          <span class="exp-card-icon" aria-hidden="true">🎟️</span>
-          <span class="exp-card-badge" style="background:#1a1510;color:#d4b06a;">Sala exclusiva</span>
-          <div class="exp-card-name">Cine Privado</div>
-          <div class="exp-card-price">$250 <span>por persona</span></div>
-          <div class="exp-card-desc">Sala exclusiva por 4 horas. Tu película, tus invitados, tu experiencia.</div>
-        </button>
-
-        <button type="button" class="exp-card" onclick="selectExperience('cultural')">
-          <span class="exp-card-icon" aria-hidden="true">🌿</span>
-          <span class="exp-card-badge" style="background:#0d1a1a;color:#70d0c0;">Evento comunitario</span>
-          <div class="exp-card-name">Espacio Cultural</div>
-          <div class="exp-card-price">$25 <span>por persona</span></div>
-          <div class="exp-card-desc">Organiza tu evento artístico, cultural o deportivo en la casa del arte.</div>
-        </button>
-      </div>
-
-      <div class="exp-form-container" id="expFormContainer"></div>
-    </div>
-  </section>
-</div>
-
-<!-- ==================== IMPACTO ==================== -->
-<div id="page-impacto" class="page">
-  <section>
-    <div class="container">
-      <h2 class="section-title">Nuestro impacto</h2>
-      <p class="section-subtitle">Parte de lo que generamos se regresa a la comunidad</p>
-      <div id="impactGrid" class="impact-cards">
-        <div class="loading"><div class="spinner"></div>Cargando impacto...</div>
-      </div>
-    </div>
-  </section>
-</div>
-
-<!-- ==================== CONTACTO ==================== -->
-<div id="page-contacto" class="page">
-  <section>
-    <div class="container">
-      <h2 class="section-title">Contacto</h2>
-      <p class="section-subtitle">Escríbenos o visítanos</p>
-      <div style="max-width: 480px;">
-        <div style="background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 24px;">
-          <div id="contactInfo" style="color: #a09890;">Cargando...</div>
-        </div>
-      </div>
-    </div>
-  </section>
-</div>
-
-<!-- ==================== MODAL: DETALLE EVENTO ==================== -->
-<div class="modal-overlay" id="eventModal" role="dialog" aria-modal="true" aria-label="Detalle del evento">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('eventModal')" aria-label="Cerrar">&times;</button>
-    <div id="eventDetail"></div>
   </div>
-</div>
+</section>
 
-<!-- ==================== MODAL: FORMULARIO RESERVA ==================== -->
-<div class="modal-overlay" id="reserveModal" role="dialog" aria-modal="true" aria-label="Reservar lugar">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('reserveModal')" aria-label="Cerrar">&times;</button>
-    <div id="reserveForm"></div>
-  </div>
-</div>
-
-<!-- ==================== MODAL: CONFIRMACIÓN QR ==================== -->
-<div class="modal-overlay" id="confirmModal" role="dialog" aria-modal="true" aria-label="Reserva confirmada">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('confirmModal')" aria-label="Cerrar">&times;</button>
-    <div id="confirmContent" class="confirmation"></div>
-  </div>
-</div>
-
-<!-- ==================== MODAL: CONSULTAR RESERVA ==================== -->
-<div class="modal-overlay" id="lookupModal" role="dialog" aria-modal="true" aria-label="Consultar mi reserva">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('lookupModal')" aria-label="Cerrar">&times;</button>
-    <div id="lookupContent">
-      <h2 style="margin-bottom: 6px;">🔍 Consultar mi reserva</h2>
-      <p style="color: #7a7570; margin-bottom: 24px; font-size: 0.9rem;">Ingresa tu email para recuperar tus reservas y códigos QR</p>
-      <form onsubmit="lookupReserva(event)">
-        <div class="form-group">
-          <label for="lookupEmail">Email con el que reservaste *</label>
-          <input type="email" class="form-input" id="lookupEmail" required placeholder="tu@email.com" autocomplete="email">
-        </div>
-        <button type="submit" class="btn btn-primary" id="btnLookup">Buscar mis reservas</button>
-      </form>
-      <div class="lookup-results" id="lookupResults"></div>
+<!-- ============ MARQUEE ============ -->
+<div class="marquee" aria-hidden="true">
+  <div class="marquee-track">
+    <div class="marquee-group">
+      <span class="mq-word">CINETECA TRIKLES</span><span class="mq-pop">🍿</span>
+      <span class="mq-serif">La casa del arte</span><span>🎞️</span>
+      <span class="mq-word">FUNCIÓN DE HOY · 19:30</span><span class="mq-dot">●</span>
+      <span class="mq-word">CARTELERA CURADA</span><span class="mq-dot">●</span>
+    </div>
+    <div class="marquee-group">
+      <span class="mq-word">CINETECA TRIKLES</span><span class="mq-pop">🍿</span>
+      <span class="mq-serif">La casa del arte</span><span>🎞️</span>
+      <span class="mq-word">FUNCIÓN DE HOY · 19:30</span><span class="mq-dot">●</span>
+      <span class="mq-word">CARTELERA CURADA</span><span class="mq-dot">●</span>
     </div>
   </div>
 </div>
 
-<!-- ==================== TOAST ==================== -->
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<!-- ============ HOY EN PANTALLA ============ -->
+<section class="section" id="featuredSection" style="padding-bottom:96px;">
+  <div class="label-row">
+    <span class="label label-yellow">EN PANTALLA · HOY</span>
+    <span class="label-note serif">Una película a la vez</span>
+  </div>
+  <div id="featuredBody">
+    <div class="loading"><div class="spinner"></div>Cargando función de hoy…</div>
+  </div>
+</section>
 
-<!-- ==================== FOOTER ==================== -->
-<footer>
-  <span class="brand-small">Cineteca Trikles</span> · Parte de Trikles Company<br>
-  <span style="font-size: 0.8rem; margin-top: 4px; display: inline-block;">El cine como excusa para encontrarnos</span>
+<!-- ============ CARTELERA ============ -->
+<section id="cartelera" class="section" style="padding-top:0;">
+  <div class="label-row">
+    <span class="label">CARTELERA</span>
+    <div class="chips" id="typeChips"></div>
+  </div>
+  <div class="events-list" id="eventsList">
+    <div class="loading"><div class="spinner"></div>Cargando cartelera…</div>
+  </div>
+</section>
+
+<!-- ============ EXPERIENCIAS ============ -->
+<section id="experiencias" class="dark">
+  <div class="section">
+    <div class="label-row">
+      <span class="label">EXPERIENCIAS</span>
+      <span class="label-note serif">Elige cómo vivir Trikles</span>
+    </div>
+    <h2 class="section-h2">Crea tu <span class="serif">propia</span> función</h2>
+    <div class="exp-grid">
+      <div class="exp-cell">
+        <span class="exp-num">01</span>
+        <h3 class="exp-name">Petición abierta</h3>
+        <div class="exp-price">$100 <small>/ persona</small></div>
+        <p class="exp-desc">Tú eliges la película. La función es pública: cualquiera puede unirse a verla contigo.</p>
+        <button type="button" class="exp-link" onclick="openExperience('peticion')">SOLICITAR →</button>
+      </div>
+      <div class="exp-cell">
+        <span class="exp-num">02</span>
+        <h3 class="exp-name">Cine privado</h3>
+        <div class="exp-price" style="color:var(--yellow);">$250 <small>/ persona</small></div>
+        <p class="exp-desc">Sala exclusiva por 4 horas. Tu película, tus invitados, tu experiencia completa.</p>
+        <button type="button" class="exp-link" onclick="openExperience('privado')">SOLICITAR →</button>
+      </div>
+      <div class="exp-cell">
+        <span class="exp-num">03</span>
+        <h3 class="exp-name">Espacio cultural</h3>
+        <div class="exp-price">$25 <small>/ persona</small></div>
+        <p class="exp-desc">Organiza tu evento artístico, cultural o deportivo en la casa del arte.</p>
+        <button type="button" class="exp-link" onclick="openExperience('cultural')">SOLICITAR →</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TIENDA ============ -->
+<section id="tienda" class="section">
+  <div class="label-row">
+    <span class="label label-yellow">TIENDA · DULCERÍA</span>
+    <span class="label-note serif">Para acompañar la función</span>
+  </div>
+  <h2 class="section-h2 light">Paquetes <span class="serif">para</span> la función</h2>
+  <div class="shop-grid" id="shopGrid"></div>
+</section>
+
+<!-- ============ IMPACTO ============ -->
+<section id="impacto" class="section">
+  <div class="label-row" style="margin-bottom:32px;"><span class="label">IMPACTO</span></div>
+  <h2 class="impact-h2">Parte de lo que generamos <em>se regresa a la comunidad.</em></h2>
+  <div class="impact-list" id="impactList">
+    <div class="loading"><div class="spinner"></div>Cargando impacto…</div>
+  </div>
+</section>
+
+<!-- ============ TIRA DE PELÍCULA ============ -->
+<div class="film-strip" aria-hidden="true">
+  <div class="film-perf"></div>
+  <div class="film-perf"></div>
+</div>
+
+<!-- ============ CONTACTO / FOOTER ============ -->
+<footer id="contacto">
+  <div class="footer-grid">
+    <div>
+      <h2 class="footer-h2">Visítanos</h2>
+      <p class="footer-tag">Aquí el cine se vive en comunidad.</p>
+    </div>
+    <div class="footer-contact" id="footerContact"></div>
+  </div>
+  <div class="footer-bar">
+    <span><strong>Cineteca Trikles</strong> · Parte de Trikles Company</span>
+    <span class="serif" style="font-size:14px;">La casa del arte</span>
+  </div>
 </footer>
+
+<!-- ============ MODAL: RESERVA ============ -->
+<div class="overlay" id="reserveModal" role="dialog" aria-modal="true" aria-label="Reservar">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('reserveModal')" aria-label="Cerrar">✕</button>
+    <div id="reserveBody"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: PEDIDO ============ -->
+<div class="overlay" id="orderModal" role="dialog" aria-modal="true" aria-label="Tu pedido">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeOrder()" aria-label="Cerrar">✕</button>
+    <div id="orderBody"></div>
+  </div>
+</div>
+
+<!-- ============ MODAL: CONSULTAR RESERVA ============ -->
+<div class="overlay" id="lookupModal" role="dialog" aria-modal="true" aria-label="Mi reserva">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeModal('lookupModal')" aria-label="Cerrar">✕</button>
+    <h2 class="modal-title" style="font-size:28px;">Mi reserva</h2>
+    <p class="modal-meta">Ingresa tu email para recuperar tus reservas y códigos.</p>
+    <div class="field" style="margin-bottom:0;">
+      <input type="email" id="lookupEmail" placeholder="tu@email.com" autocomplete="email" aria-label="Email">
+    </div>
+    <button type="button" class="btn-primary" id="btnLookup" style="margin-top:16px;" onclick="doLookup()">BUSCAR MIS RESERVAS</button>
+    <div id="lookupResults"></div>
+  </div>
+</div>
+
+<!-- ============ CART BAR ============ -->
+<div class="cart-bar" id="cartBar">
+  <span class="cart-bar-text" id="cartBarText">🍿 0 · $0</span>
+  <button type="button" class="btn-pay" onclick="openOrder()">PAGAR</button>
+</div>
+
+<!-- ============ TOAST ============ -->
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // =================================================================
-// CONFIGURACIÓN — pega aquí la URL de tu Apps Script (/exec)
+// CONFIG — URL del Apps Script (la misma del sitio original)
 // =================================================================
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw3skEAAbt6skxAiSon39EHPOdEAw6gXcUbtFMxCfNHNL-OqisUgD-DQ5fGTm_1FGq-/exec';
-// =================================================================
-// Ya NO se lee el Google Sheet directamente: todo pasa por el Apps
-// Script para que la hoja pueda quedarse PRIVADA y nadie vea los
-// datos de tus clientes. (Lee las instrucciones en apps_script_reservas.js)
-// =================================================================
 
-// ============ DATA STORE ============
-let eventos = [];
-let config = {};
-let impacto = [];
-let tiposEvento = {};
-let activeType = 'todos';
+// ============ STATE ============
+let eventos = [], config = {}, impacto = [], tiposEvento = {};
+let activeFilter = 'Todos';
+let cart = {};                 // id -> qty
+let reserveCtx = null;         // contexto del modal de reserva/solicitud
 
-// ============ API (Apps Script) ============
-// GET: lecturas (bootstrap, lookup). CORS funciona en GET.
+// Catálogo de tienda (cliente — sin backend por ahora)
+const PRODUCTS = [
+  { id:'combo-clasico',   tag:'COMBO',          name:'Clásico',          desc:'Palomitas recién hechas y refresco. El básico de toda función.',  price:80,  note:'' },
+  { id:'combo-cinefilo',  tag:'COMBO',          name:'Cinéfilo',         desc:'Palomitas grandes, dos bebidas y dulce. Para compartir butaca.',   price:150, note:'' },
+  { id:'paquete-funcion', tag:'BOLETO + COMBO', name:'Función completa', desc:'Tu lugar en cualquier función de cartelera más el combo clásico.', price:170, note:'' },
+  { id:'membresia',       tag:'MEMBRESÍA',      name:'Socio Trikles',    desc:'Cuatro funciones al mes, palomitas incluidas y preventa de eventos.', price:300, note:'/ mes' },
+];
+
+const EXP = {
+  peticion: { nombre:'Petición abierta', precio:100, meta:'$100 POR PERSONA · FUNCIÓN PÚBLICA' },
+  privado:  { nombre:'Cine privado',     precio:250, meta:'$250 POR PERSONA · SALA EXCLUSIVA 4 HRS' },
+  cultural: { nombre:'Espacio cultural', precio:25,  meta:'$25 POR PERSONA · EVENTO COMUNITARIO' },
+};
+
+// ============ API ============
 async function apiGet(action, params = {}) {
   const u = new URL(APPS_SCRIPT_URL);
   u.searchParams.set('action', action);
   Object.keys(params).forEach(k => u.searchParams.set(k, params[k]));
-  const res = await fetch(u.toString(), { method: 'GET' });
+  const res = await fetch(u.toString());
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
-// POST: escrituras. Usamos text/plain para evitar el "preflight" CORS
-// y así PODER leer la respuesta del servidor (confirmación real).
 async function apiPost(payload) {
   const res = await fetch(APPS_SCRIPT_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(payload),
   });
   if (!res.ok) throw new Error('HTTP ' + res.status);
   return res.json();
 }
 
-// ============ TYPE COLORS ============
-const TYPE_COLORS = {
-  'Película': { bg: '#1e3a5f', text: '#93c5fd' },
-  'Documental': { bg: '#064e3b', text: '#6ee7b7' },
-  'Concierto': { bg: '#5b1a1a', text: '#fca5a5' },
-  'Convivencia': { bg: '#5c3a0e', text: '#fcd34d' },
-  'Privado': { bg: '#3b1764', text: '#c4b5fd' },
-  'Taller': { bg: '#0e4451', text: '#67e8f9' },
-  'Estreno': { bg: '#5c1341', text: '#f9a8d4' },
-};
-function getTypeStyle(tipo) { return TYPE_COLORS[tipo] || { bg: '#333', text: '#ccc' }; }
-
-// ============ LOAD ALL DATA ============
+// ============ LOAD ============
 async function loadData() {
   try {
     const data = await apiGet('bootstrap');
     if (!data || data.status !== 'ok') throw new Error((data && data.message) || 'Respuesta inválida');
-
-    (data.config ? Object.keys(data.config) : []).forEach(k => { config[k] = data.config[k]; });
-    (data.tipos || []).forEach(row => { if (row.Tipo) tiposEvento[row.Tipo] = row; });
-
+    config = data.config || {};
+    (data.tipos || []).forEach(r => { if (r.Tipo) tiposEvento[r.Tipo] = r; });
     eventos = (data.eventos || []).sort((a, b) => (a.Fecha || '').localeCompare(b.Fecha || ''));
     impacto = data.impacto || [];
-
     renderConfig();
-    buildTypeChips();
+    renderFeatured();
+    buildChips();
     renderEvents();
     renderImpact();
-    handleDeepLink();
   } catch (err) {
     console.error('Error cargando datos:', err);
-    document.getElementById('eventsGrid').innerHTML =
-      '<div class="empty-state"><div class="empty-state-icon">⚠️</div>' +
-      '<p>No se pudo cargar la cartelera.<br>Revisa que el Apps Script esté implementado como "Aplicación web" con acceso "Cualquier persona", ' +
-      'y que la URL en index.html sea la correcta.</p></div>';
+    document.getElementById('featuredBody').innerHTML =
+      '<div class="empty">⚠️ No se pudo cargar la información.<br>Revisa que el Apps Script esté implementado como "Aplicación web" con acceso "Cualquier persona".</div>';
+    document.getElementById('eventsList').innerHTML = '';
   }
 }
 
 // ============ RENDER CONFIG ============
 function renderConfig() {
   if (config.horario) document.getElementById('heroSchedule').textContent = config.horario;
-  if (config.mensaje_bienvenida) document.querySelector('.hero-tagline').textContent = config.mensaje_bienvenida;
+  if (config.mensaje_bienvenida) document.getElementById('heroIntro').textContent = config.mensaje_bienvenida;
+  // El logo del hero es el oficial (negro sobre blanco) con efecto multiply, según el diseño.
+  // Se mantiene logo.png.jpeg; config.logo_url solo se usa si carga correctamente.
   if (config.logo_url) {
-    const logoEl = document.getElementById('heroLogo');
-    logoEl.src = getImageUrl(config.logo_url);
-    logoEl.style.display = 'block';
+    const probe = new Image();
+    const url = getImageUrl(config.logo_url);
+    probe.onload = () => { if (probe.naturalWidth > 0) document.getElementById('heroLogo').src = url; };
+    probe.src = url;
   }
 
-  let html = '';
-  if (config.direccion) html += `<p style="margin-bottom:12px"><strong>📍 Dirección:</strong><br>${esc(config.direccion)}</p>`;
-  if (config.horario) html += `<p style="margin-bottom:12px"><strong>🕐 Horario:</strong><br>${esc(config.horario)}</p>`;
-  if (config.whatsapp_contacto) html += `<p style="margin-bottom:12px"><strong>💬 WhatsApp:</strong><br><a href="https://wa.me/${config.whatsapp_contacto.replace(/[^0-9]/g,'')}" target="_blank" rel="noopener">${esc(config.whatsapp_contacto)}</a></p>`;
-  if (config.email_contacto) html += `<p style="margin-bottom:12px"><strong>✉️ Email:</strong><br><a href="mailto:${esc(config.email_contacto)}">${esc(config.email_contacto)}</a></p>`;
-  if (config.causa_actual) html += `<p style="margin-top:20px; padding-top:16px; border-top:1px solid #333"><strong>🌱 Causa del mes:</strong><br>${esc(config.causa_actual)}</p>`;
-  document.getElementById('contactInfo').innerHTML = html || 'Sin información de contacto.';
+  // Footer (email inyectado en runtime para evitar ofuscación)
+  const rows = [];
+  if (config.direccion) rows.push(`<div><span class="fc-label">DIRECCIÓN</span>${esc(config.direccion)}</div>`);
+  if (config.whatsapp_contacto) {
+    const wa = config.whatsapp_contacto.replace(/[^0-9]/g, '');
+    rows.push(`<div><span class="fc-label">WHATSAPP</span><a href="https://wa.me/${wa}" target="_blank" rel="noopener">${esc(config.whatsapp_contacto)}</a></div>`);
+  }
+  if (config.email_contacto) rows.push(`<div><span class="fc-label">EMAIL</span><a href="mailto:${esc(config.email_contacto)}">${esc(config.email_contacto)}</a></div>`);
+  if (config.horario) rows.push(`<div><span class="fc-label">HORARIO</span>${esc(config.horario)}</div>`);
+  if (config.causa_actual) rows.push(`<div><span class="fc-label">CAUSA DEL MES</span>${esc(config.causa_actual)}</div>`);
+  document.getElementById('footerContact').innerHTML = rows.join('') || '<div>Información de contacto próximamente.</div>';
 }
 
-// ============ FILTERS ============
-function buildTypeChips() {
+// ============ FEATURED ============
+function renderFeatured() {
+  const body = document.getElementById('featuredBody');
+  if (!eventos.length) { document.getElementById('featuredSection').style.display = 'none'; return; }
+  const e = eventos[0];
+  const img = getImageUrl(e.Imagen_URL);
+  const disp = available(e);
+  const spots = disp > 0 ? `Quedan ${disp} lugares` : 'Agotado';
+  body.innerHTML = `
+    ${img ? `<img class="featured-still" src="${img}" alt="${esc(e.Titulo)}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'featured-still',textContent:'${esc(e.Titulo)}'}))">`
+          : `<div class="featured-still">${esc(e.Titulo)}</div>`}
+    <div class="featured-grid">
+      <div>
+        <div class="featured-cat">${esc(e.Tipo || 'FUNCIÓN')}</div>
+        <h2 class="featured-title">${esc(e.Titulo)}</h2>
+        <p class="featured-synopsis">${esc(e.Descripcion)}</p>
+      </div>
+      <div class="featured-side">
+        <span class="featured-meta">${eventDate(e)} · ${spots}</span>
+        ${disp > 0
+          ? `<button type="button" class="btn-ink" onclick="openReserveEvent(0)">RESERVAR LUGAR</button>`
+          : `<button type="button" class="btn-ink" disabled>AGOTADO</button>`}
+      </div>
+    </div>`;
+}
+
+// ============ CHIPS / FILTERS ============
+function buildChips() {
   const types = Array.from(new Set(eventos.map(e => e.Tipo).filter(Boolean)));
-  if (!eventos.length) return;
-  document.getElementById('filterBar').style.display = 'block';
-  const chips = document.getElementById('typeChips');
-  chips.innerHTML =
-    `<button type="button" class="chip active" data-type="todos" onclick="setType('todos', this)">Todos</button>` +
-    types.map(t => `<button type="button" class="chip" data-type="${esc(t)}" onclick="setType('${esc(t)}', this)">${esc(t)}</button>`).join('');
+  const cats = ['Todos', ...types];
+  document.getElementById('typeChips').innerHTML = cats.map(c =>
+    `<button type="button" class="chip${c === activeFilter ? ' active' : ''}" data-cat="${esc(c)}" onclick="setFilter('${esc(c)}')">${esc(c)}</button>`
+  ).join('');
 }
-function setType(type, el) {
-  activeType = type;
-  document.querySelectorAll('#typeChips .chip').forEach(c => c.classList.toggle('active', c === el));
-  applyFilters();
+function setFilter(cat) {
+  activeFilter = cat;
+  document.querySelectorAll('#typeChips .chip').forEach(ch => ch.classList.toggle('active', ch.dataset.cat === cat));
+  renderEvents();
 }
-function getFilteredEvents() {
-  const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
-  return eventos.filter(e => {
-    if (activeType !== 'todos' && e.Tipo !== activeType) return false;
-    if (q) {
-      const hay = `${e.Titulo || ''} ${e.Descripcion || ''} ${e.Tipo || ''}`.toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-}
-function applyFilters() { renderEvents(); }
 
-// ============ RENDER EVENTS ============
+// ============ CARTELERA ============
 function renderEvents() {
-  const grid = document.getElementById('eventsGrid');
-  const list = getFilteredEvents();
-
-  if (!eventos.length) {
-    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🎬</div><p>No hay eventos próximos por ahora.<br>¡Vuelve pronto!</p></div>';
-    return;
-  }
-  if (!list.length) {
-    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🔍</div><p>No encontramos eventos con ese filtro.</p></div>';
-    return;
-  }
-
-  grid.innerHTML = list.map(e => {
+  const list = document.getElementById('eventsList');
+  const filtered = eventos.filter(e => activeFilter === 'Todos' || e.Tipo === activeFilter);
+  if (!eventos.length) { list.innerHTML = '<div class="empty">No hay funciones próximas por ahora. ¡Vuelve pronto!</div>'; return; }
+  if (!filtered.length) { list.innerHTML = '<div class="empty">No hay funciones de ese tipo por ahora.</div>'; return; }
+  list.innerHTML = filtered.map(e => {
     const i = eventos.indexOf(e);
-    const style = getTypeStyle(e.Tipo);
-    const cupoMax = parseInt(e.Cupo_Max) || 0;
-    const reservados = parseInt(e.Reservas_Confirmadas) || 0;
-    const disponible = Math.max(0, cupoMax - reservados);
-    const lowSpots = disponible <= 5 && disponible > 0;
-    const fecha = formatDate(e.Fecha);
-    const imgUrl = getImageUrl(e.Imagen_URL);
-    const spotsLabel = disponible > 0 ? disponible + ' lugares' : 'Agotado';
-    const spotsClass = disponible === 0 ? 'full' : (lowSpots ? 'low' : '');
-
+    const disp = available(e);
+    const img = getImageUrl(e.Imagen_URL);
+    let spotsLabel, spotsColor;
+    if (disp <= 0) { spotsLabel = 'AGOTADO'; spotsColor = 'var(--red)'; }
+    else if (disp <= 6) { spotsLabel = 'QUEDAN ' + disp + ' LUGARES'; spotsColor = 'var(--amber)'; }
+    else { spotsLabel = disp + ' LUGARES'; spotsColor = 'var(--warm-gray)'; }
+    const num = String(filtered.indexOf(e) + 1).padStart(2, '0');
     return `
-      <button type="button" class="event-card" onclick="openEventDetail(${i})" aria-label="${esc(e.Titulo)}, ${fecha}">
-        ${imgUrl ? `<img class="event-card-img" src="${imgUrl}" alt="${esc(e.Titulo)}" loading="lazy" onerror="this.style.display='none'">` : ''}
-        <div class="event-card-header">
-          <span class="event-type-badge" style="background:${style.bg};color:${style.text}">${esc(e.Tipo)}</span>
-          <div class="event-card-title">${esc(e.Titulo)}</div>
-          <div class="event-card-desc">${esc(e.Descripcion)}</div>
-        </div>
-        <div class="event-card-footer">
-          <span class="event-date">📅 ${fecha} · ${esc(e.Hora_Inicio || '')}</span>
-          <span class="event-spots ${spotsClass}">${spotsLabel}</span>
-        </div>
+      <button type="button" class="event-row" onclick="openReserveEvent(${i})" aria-label="${esc(e.Titulo)}">
+        <span class="event-num">${num}</span>
+        ${img ? `<img class="poster" src="${img}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">` : `<span class="poster"></span>`}
+        <span class="event-main">
+          <span class="event-type">${esc(e.Tipo || '')}</span>
+          <span class="event-title">${esc(e.Titulo)}</span>
+          <span class="event-desc">${esc(e.Descripcion)}</span>
+        </span>
+        <span class="event-side">
+          <span class="event-date">${eventDate(e)}</span>
+          <span class="event-spots" style="color:${spotsColor};">${spotsLabel}</span>
+          <span class="event-cta">RESERVAR →</span>
+        </span>
       </button>`;
   }).join('');
 }
 
-// ============ RENDER IMPACT ============
+// ============ IMPACTO ============
 function renderImpact() {
-  const grid = document.getElementById('impactGrid');
-  if (!impacto.length) {
-    grid.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🌱</div><p>Próximamente información de impacto.</p></div>';
-    return;
-  }
-  grid.innerHTML = impacto.map(item => `
-    <div class="impact-card">
-      <div class="impact-category">${esc(item.Categoria)}</div>
-      <div class="impact-desc">${esc(item.Descripcion)}</div>
-      <div class="impact-beneficiary">🤝 ${esc(item.Beneficiario)}</div>
-      ${parseInt(item.Monto_MXN) ? `<div class="impact-amount">$${parseInt(item.Monto_MXN).toLocaleString()} MXN aportados</div>` : ''}
-    </div>`).join('');
+  const list = document.getElementById('impactList');
+  if (!impacto.length) { list.innerHTML = '<div class="empty">Próximamente información de impacto.</div>'; return; }
+  list.innerHTML = impacto.map(it => {
+    const val = parseInt(it.Monto_MXN) ? '$' + parseInt(it.Monto_MXN).toLocaleString() + ' MXN' : esc(it.Beneficiario || '');
+    return `<div class="impact-row">
+      <span class="impact-label">${esc(it.Categoria)}</span>
+      <span class="impact-desc">${esc(it.Descripcion)}</span>
+      <span class="impact-val">${val}</span>
+    </div>`;
+  }).join('');
 }
 
-// ============ EVENT DETAIL MODAL ============
-function openEventDetail(index) {
+// ============ TIENDA ============
+function renderShop() {
+  document.getElementById('shopGrid').innerHTML = PRODUCTS.map(p => {
+    const qty = cart[p.id] || 0;
+    const control = qty === 0
+      ? `<button type="button" class="btn-add" onclick="changeQty('${p.id}',1)">AGREGAR +</button>`
+      : `<span class="stepper">
+           <button type="button" class="step-btn step-minus" aria-label="Quitar uno" onclick="changeQty('${p.id}',-1)">−</button>
+           <span class="step-qty">${qty}</span>
+           <button type="button" class="step-btn step-plus" aria-label="Agregar uno" onclick="changeQty('${p.id}',1)">+</button>
+         </span>`;
+    return `<div class="product">
+      <div class="product-photo">🍿</div>
+      <span class="product-tag">${esc(p.tag)}</span>
+      <h3 class="product-name">${esc(p.name)}</h3>
+      <p class="product-desc">${esc(p.desc)}</p>
+      <div class="product-foot">
+        <span class="product-price">$${p.price}<small> ${esc(p.note)}</small></span>
+        ${control}
+      </div>
+    </div>`;
+  }).join('');
+}
+function changeQty(id, d) {
+  const q = (cart[id] || 0) + d;
+  if (q <= 0) delete cart[id]; else cart[id] = q;
+  renderShop();
+  renderCartBar();
+}
+function cartCount() { return Object.values(cart).reduce((n, q) => n + q, 0); }
+function cartTotal() { return PRODUCTS.reduce((n, p) => n + (cart[p.id] || 0) * p.price, 0); }
+function renderCartBar() {
+  const bar = document.getElementById('cartBar');
+  const n = cartCount();
+  const orderShown = document.getElementById('orderModal').classList.contains('open');
+  if (n > 0 && !orderShown) {
+    document.getElementById('cartBarText').textContent = `🍿 ${n === 1 ? '1 artículo' : n + ' artículos'} · $${cartTotal()}`;
+    bar.classList.add('show');
+  } else bar.classList.remove('show');
+}
+
+// ============ ORDER MODAL ============
+function openOrder() {
+  if (!cartCount()) return;
+  const lines = PRODUCTS.filter(p => cart[p.id]).map(p =>
+    `<div class="order-line"><span><span style="font-weight:600;">${esc(p.name)}</span> <span class="qn">× ${cart[p.id]}</span></span><span style="font-weight:800;">$${cart[p.id] * p.price}</span></div>`
+  ).join('');
+  document.getElementById('orderBody').innerHTML = `
+    <div class="modal-cat">TIENDA · DULCERÍA</div>
+    <h2 class="modal-title" style="font-size:30px;margin-bottom:20px;">Tu pedido</h2>
+    <div style="display:flex;flex-direction:column;margin-bottom:20px;">
+      ${lines}
+      <div class="order-total"><span class="t">TOTAL</span><span class="v">$${cartTotal()}</span></div>
+    </div>
+    <button type="button" class="btn-primary" onclick="confirmOrder()">CONFIRMAR PEDIDO</button>
+    <p class="confirm-note" style="text-align:center;">Pagas al recoger en dulcería, o por transferencia.</p>`;
+  openModal('orderModal');
+  renderCartBar();
+}
+function closeOrder() {
+  const placed = document.getElementById('orderModal').dataset.placed === '1';
+  closeModal('orderModal');
+  document.getElementById('orderModal').dataset.placed = '';
+  if (placed) { cart = {}; renderShop(); }
+  renderCartBar();
+}
+function confirmOrder() {
+  const n = cartCount(), total = cartTotal();
+  const code = 'DUL-' + Math.floor(1000 + Math.random() * 9000);
+  document.getElementById('orderModal').dataset.placed = '1';
+  document.getElementById('orderBody').innerHTML = `
+    <div class="confirm">
+      <div class="popcorn" aria-hidden="true"><span>🍿</span><span>🍿</span><span>🍿</span></div>
+      <div class="confirm-serif">Buen provecho</div>
+      <h2 class="confirm-h2">Pedido confirmado</h2>
+      <p class="confirm-sub">${n === 1 ? '1 artículo' : n + ' artículos'} · Total $${total}</p>
+      <div class="code-box"><div class="code-label">TU CÓDIGO</div><div class="code-val">${code}</div></div>
+      <p class="confirm-note">Muéstralo en dulcería al llegar a tu función.</p>
+    </div>`;
+}
+
+// ============ RESERVA / EXPERIENCIA ============
+function openReserveEvent(index) {
   const e = eventos[index];
   if (!e) return;
-  const style = getTypeStyle(e.Tipo);
-  const cupoMax = parseInt(e.Cupo_Max) || 0;
-  const reservados = parseInt(e.Reservas_Confirmadas) || 0;
-  const disponible = Math.max(0, cupoMax - reservados);
-  const precio = parseInt(e.Precio_MXN) ? `$${parseInt(e.Precio_MXN)} MXN` : 'Gratis';
-  const duracion = parseInt(e.Duracion_Min) ? `${e.Duracion_Min} min` : '—';
-  const imgUrl = getImageUrl(e.Imagen_URL);
-
-  document.getElementById('eventDetail').innerHTML = `
-    ${imgUrl ? `<img src="${imgUrl}" alt="${esc(e.Titulo)}" style="width:100%;max-height:250px;object-fit:cover;border-radius:8px;margin-bottom:16px" loading="lazy" onerror="this.style.display='none'">` : ''}
-    <h2>${esc(e.Titulo)}</h2>
-    <div class="modal-type"><span class="event-type-badge" style="background:${style.bg};color:${style.text}">${esc(e.Tipo)}</span></div>
-    <div class="modal-meta">
-      <div class="meta-item"><label>Fecha</label><span>${formatDate(e.Fecha)}</span></div>
-      <div class="meta-item"><label>Hora</label><span>${esc(e.Hora_Inicio || '—')}</span></div>
-      <div class="meta-item"><label>Duración</label><span>${duracion}</span></div>
-      <div class="meta-item"><label>Precio</label><span>${precio}</span></div>
-      <div class="meta-item"><label>Cupo</label><span>${disponible} de ${cupoMax} disponibles</span></div>
-    </div>
-    <div class="modal-desc">${esc(e.Descripcion)}</div>
-    <div class="modal-actions">
-      <button type="button" class="btn btn-secondary btn-icon" onclick="addToCalendar(${index})">📅 Agregar al calendario</button>
-      <button type="button" class="btn btn-secondary btn-icon" onclick="shareEvent(${index})">🔗 Compartir</button>
-    </div>
-    ${disponible > 0
-      ? `<button class="btn btn-primary" onclick="openReserveForm(${index})">🎟️ Reservar mi lugar</button>`
-      : `<button class="btn btn-secondary" disabled>Agotado</button>`}`;
-
-  if (e.ID_Evento) history.replaceState(null, '', '#evento-' + e.ID_Evento);
-  openModal('eventModal');
-}
-
-// ============ RESERVE FORM ============
-function openReserveForm(index) {
-  closeModal('eventModal');
-  const e = eventos[index];
-  const cupoMax = parseInt(e.Cupo_Max) || 0;
-  const reservados = parseInt(e.Reservas_Confirmadas) || 0;
-  const disponible = Math.max(1, cupoMax - reservados);
-
-  let optionsHTML = '';
-  for (let i = 1; i <= Math.min(disponible, 10); i++) {
-    optionsHTML += `<option value="${i}">${i} persona${i > 1 ? 's' : ''}</option>`;
-  }
-
-  document.getElementById('reserveForm').innerHTML = `
-    <h2 style="margin-bottom: 4px;">Reservar</h2>
-    <p style="color: var(--text-muted); margin-bottom: 24px; font-size: 0.9rem;">${esc(e.Titulo)} · ${formatDate(e.Fecha)}</p>
-    <form onsubmit="submitReserve(event, ${index})">
-      <div class="form-group"><label for="rNombre">Nombre completo *</label><input id="rNombre" type="text" class="form-input" name="nombre" required placeholder="Tu nombre" autocomplete="name"></div>
-      <div class="form-group"><label for="rTel">WhatsApp o teléfono *</label><input id="rTel" type="tel" class="form-input" name="telefono" required placeholder="+52 55 1234 5678" autocomplete="tel"></div>
-      <div class="form-group"><label for="rEmail">Email *</label><input id="rEmail" type="email" class="form-input" name="email" required placeholder="tu@email.com" autocomplete="email"></div>
-      <div class="form-group"><label for="rCant">¿Cuántas personas? *</label><select id="rCant" class="form-input" name="cantidad" required>${optionsHTML}</select></div>
-      <div class="form-group"><label for="rNotas">Notas (opcional)</label><textarea id="rNotas" class="form-textarea" name="notas" placeholder="Algo que debamos saber..."></textarea></div>
-      <button type="submit" class="btn btn-primary" id="btnSubmit">🎟️ Confirmar reserva</button>
-    </form>`;
+  reserveCtx = { kind: 'evento', index, type: (e.Tipo || 'FUNCIÓN').toUpperCase(), title: e.Titulo, meta: eventDate(e) };
+  renderReserveForm();
   openModal('reserveModal');
 }
+function openExperience(key) {
+  const x = EXP[key];
+  reserveCtx = { kind: 'experiencia', expKey: key, type: 'EXPERIENCIA', title: x.nombre, meta: x.meta };
+  renderReserveForm();
+  openModal('reserveModal');
+}
+function renderReserveForm() {
+  const c = reserveCtx;
+  let seatsField;
+  if (c.kind === 'evento') {
+    const disp = Math.max(1, available(eventos[c.index]));
+    let opts = '';
+    for (let i = 1; i <= Math.min(disp, 4); i++) opts += `<option value="${i}">${i} lugar${i > 1 ? 'es' : ''}</option>`;
+    seatsField = `<label class="field">LUGARES<select id="rSeats">${opts}</select></label>`;
+  } else {
+    seatsField = `<label class="field">ASISTENTES<input id="rSeats" type="number" min="1" max="100" value="1"></label>`;
+  }
+  document.getElementById('reserveBody').innerHTML = `
+    <div class="modal-cat">${esc(c.type)}</div>
+    <h2 class="modal-title">${esc(c.title)}</h2>
+    <p class="modal-meta">${esc(c.meta)}</p>
+    <label class="field">NOMBRE COMPLETO<input id="rName" type="text" placeholder="Tu nombre" autocomplete="name"></label>
+    <label class="field">EMAIL<input id="rEmail" type="email" placeholder="tu@email.com" autocomplete="email"></label>
+    ${seatsField}
+    <button type="button" class="btn-primary" id="rSubmit" style="margin-top:8px;" onclick="submitReserve()">
+      ${c.kind === 'evento' ? 'CONFIRMAR RESERVA' : 'ENVIAR SOLICITUD'}</button>`;
+}
 
-// ============ SUBMIT RESERVATION (confirmación REAL) ============
-async function submitReserve(event, index) {
-  event.preventDefault();
-  const form = event.target;
-  const btn = document.getElementById('btnSubmit');
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
+async function submitReserve() {
+  const c = reserveCtx;
+  const name = document.getElementById('rName').value.trim();
+  const email = document.getElementById('rEmail').value.trim();
+  const seats = parseInt(document.getElementById('rSeats').value) || 1;
+  if (!name || !email) { toast('Completa tu nombre y email.', 'error'); return; }
 
-  const e = eventos[index];
-  const codigo = 'TRK-' + Date.now().toString(36).toUpperCase().slice(-6);
-
-  const data = {
-    ID_Evento: e.ID_Evento,
-    Titulo_Evento: e.Titulo,
-    Nombre: form.nombre.value,
-    Telefono: form.telefono.value,
-    Email: form.email.value || '',
-    Cantidad_Personas: form.cantidad.value,
-    Codigo_Confirmacion: codigo,
-    Notas: form.notas.value || '',
-    Fecha_Reserva: new Date().toISOString().split('T')[0],
-    Estado: 'Confirmada',
-  };
+  const btn = document.getElementById('rSubmit');
+  btn.disabled = true; btn.textContent = 'Enviando…';
 
   try {
-    const resp = await apiPost(data);
-    if (resp.status === 'ok') {
-      // refleja el nuevo cupo localmente
-      if (resp.disponible != null) {
-        e.Reservas_Confirmadas = String((parseInt(e.Cupo_Max) || 0) - resp.disponible);
-      }
-      showConfirmation(data, e);
-      renderEvents();
-    } else if (resp.status === 'full') {
-      btn.disabled = false;
-      btn.textContent = '🎟️ Confirmar reserva';
-      toast(`Lo sentimos, ya no hay suficientes lugares. Quedan ${resp.disponible}.`, 'error');
+    if (c.kind === 'evento') {
+      const e = eventos[c.index];
+      const code = 'TRK-' + Date.now().toString(36).toUpperCase().slice(-6);
+      const data = {
+        ID_Evento: e.ID_Evento, Titulo_Evento: e.Titulo, Nombre: name, Telefono: '', Email: email,
+        Cantidad_Personas: String(seats), Codigo_Confirmacion: code, Notas: '',
+        Fecha_Reserva: new Date().toISOString().split('T')[0], Estado: 'Confirmada',
+      };
+      const resp = await apiPost(data);
+      if (resp.status === 'ok') {
+        if (resp.disponible != null) e.Reservas_Confirmadas = String((parseInt(e.Cupo_Max) || 0) - resp.disponible);
+        showReserveConfirmation(e, code, seats);
+        renderEvents(); renderFeatured();
+      } else if (resp.status === 'full') {
+        btn.disabled = false; btn.textContent = 'CONFIRMAR RESERVA';
+        toast(`Ya no hay suficientes lugares. Quedan ${resp.disponible}.`, 'error');
+      } else throw new Error(resp.message || 'Error');
     } else {
-      throw new Error(resp.message || 'Error desconocido');
+      const x = EXP[c.expKey];
+      const data = {
+        sheet: 'Solicitudes', Tipo: x.nombre, Nombre: name, Telefono: '', Email: email,
+        Descripcion: '', Fecha_Solicitada: '', Hora_Solicitada: '',
+        Num_Asistentes: String(seats), Precio_Unitario: String(x.precio), Total: String(seats * x.precio), Estado: 'Pendiente',
+      };
+      const resp = await apiPost(data);
+      if (!resp || resp.status === 'error') throw new Error((resp && resp.message) || 'Error');
+      showSolicitudConfirmation(x, seats);
     }
   } catch (err) {
     console.error(err);
-    btn.disabled = false;
-    btn.textContent = '🎟️ Confirmar reserva';
-    toast('No se pudo confirmar tu reserva. Revisa tu conexión e inténtalo de nuevo.', 'error');
+    btn.disabled = false; btn.textContent = c.kind === 'evento' ? 'CONFIRMAR RESERVA' : 'ENVIAR SOLICITUD';
+    toast('No se pudo enviar. Revisa tu conexión e inténtalo de nuevo.', 'error');
   }
 }
 
-// ============ QR CONFIRMATION ============
-function showConfirmation(data, evento) {
-  closeModal('reserveModal');
-  const msgConfirm = config.mensaje_confirmacion || '¡Reserva confirmada! Te esperamos.';
-  document.getElementById('confirmContent').innerHTML = `
-    <h2>¡Estás dentro! 🎉</h2>
-    <p>${esc(msgConfirm)}</p>
-    <div class="qr-code-text">${esc(data.Codigo_Confirmacion)}</div>
-    <div class="qr-container" id="qrCodeBox"></div>
-    <p class="qr-instructions">
-      Muestra este código QR al llegar a <strong>${esc(evento.Titulo)}</strong><br>
-      📅 ${formatDate(evento.Fecha)} · ${esc(evento.Hora_Inicio || '')}<br>
-      👥 ${esc(data.Cantidad_Personas)} persona${parseInt(data.Cantidad_Personas) > 1 ? 's' : ''}<br><br>
-      <em>Toma captura de pantalla para no perderlo.</em>
-    </p>
-    <div class="modal-actions" style="margin-top:8px;">
-      <button type="button" class="btn btn-secondary btn-icon" onclick="addToCalendarByEvent('${esc(evento.ID_Evento)}')">📅 Agregar al calendario</button>
-    </div>
-    <button class="btn btn-secondary" style="margin-top: 12px;" onclick="closeModal('confirmModal')">Cerrar</button>`;
-
-  openModal('confirmModal');
-  makeQR('qrCodeBox', `TRIKLES|${data.Codigo_Confirmacion}|${data.ID_Evento}|${data.Nombre}|${data.Cantidad_Personas}`, 200);
+function showReserveConfirmation(e, code, seats) {
+  document.getElementById('reserveBody').innerHTML = `
+    <div class="confirm">
+      <div class="popcorn" aria-hidden="true"><span>🍿</span><span>🍿</span><span>🍿</span></div>
+      <div class="confirm-serif">Nos vemos en la función</div>
+      <h2 class="confirm-h2">Reserva confirmada</h2>
+      <p class="confirm-sub">${esc(e.Titulo)} · ${eventDate(e)} · ${seats} lugar${seats > 1 ? 'es' : ''}</p>
+      <div class="qr-box" id="qrBox"></div>
+      <div class="code-box"><div class="code-label">TU CÓDIGO</div><div class="code-val">${esc(code)}</div></div>
+      <p class="confirm-note">Preséntalo en taquilla. Toma captura para no perderlo.</p>
+      <div style="margin-top:10px;"><button type="button" class="cal-link" onclick="addToCalendar(${eventos.indexOf(e)})">＋ AGREGAR AL CALENDARIO</button></div>
+    </div>`;
+  makeQR('qrBox', `TRIKLES|${code}|${e.ID_Evento}|${esc(e.Titulo)}|${seats}`, 168);
+}
+function showSolicitudConfirmation(x, seats) {
+  document.getElementById('reserveBody').innerHTML = `
+    <div class="confirm">
+      <div class="popcorn" aria-hidden="true"><span>🍿</span><span>🍿</span><span>🍿</span></div>
+      <div class="confirm-serif">Gracias por tu interés</div>
+      <h2 class="confirm-h2">Solicitud enviada</h2>
+      <p class="confirm-sub">${esc(x.nombre)} · ${seats} persona${seats > 1 ? 's' : ''} · $${(seats * x.precio).toLocaleString()} MXN aprox.</p>
+      <p class="confirm-note">Te contactaremos por email para confirmar fecha, disponibilidad y coordinar el pago.</p>
+    </div>`;
 }
 
-function makeQR(boxId, text, size) {
-  const box = document.getElementById(boxId);
-  if (!box || typeof QRCode === 'undefined') return;
-  box.innerHTML = '';
-  new QRCode(box, { text, width: size, height: size, colorDark: '#1a1a1a', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+// ============ LOOKUP ============
+function openLookup() {
+  document.getElementById('lookupResults').innerHTML = '';
+  document.getElementById('lookupEmail').value = '';
+  openModal('lookupModal');
+}
+async function doLookup() {
+  const email = document.getElementById('lookupEmail').value.trim().toLowerCase();
+  const out = document.getElementById('lookupResults');
+  if (!email) { toast('Ingresa tu email.', 'error'); return; }
+  const btn = document.getElementById('btnLookup');
+  btn.disabled = true; btn.textContent = 'BUSCANDO…';
+  out.innerHTML = '<div class="loading"><div class="spinner"></div>Buscando tus reservas…</div>';
+  try {
+    const resp = await apiGet('lookup', { email });
+    const reservas = (resp && resp.status === 'ok') ? (resp.reservas || []) : [];
+    if (!reservas.length) {
+      out.innerHTML = '<div class="empty">No encontramos reservas con ese email.<br><span style="font-size:12.5px;">Verifica que sea el mismo que usaste al reservar.</span></div>';
+    } else {
+      reservas.sort((a, b) => (b.Fecha_Reserva || '').localeCompare(a.Fecha_Reserva || ''));
+      out.innerHTML = reservas.map((r, i) => {
+        const estado = (r.Estado || 'Pendiente').trim().toUpperCase();
+        const cant = r.Cantidad_Personas || 1;
+        const code = r.Codigo_Confirmacion || '—';
+        return `<div class="lookup-card">
+          <div>
+            <div class="lt">${esc(r.Titulo_Evento || 'Evento')}</div>
+            <div class="lm">Reservado el ${formatDate(r.Fecha_Reserva)} · ${esc(String(cant))} lugar${parseInt(cant) > 1 ? 'es' : ''}</div>
+            ${code !== '—' ? `<div class="lookup-qr" id="lqr_${i}"></div>` : ''}
+          </div>
+          <div>
+            <div class="ls">${esc(estado)}</div>
+            <div class="lc">${esc(code)}</div>
+          </div>
+        </div>`;
+      }).join('');
+      setTimeout(() => reservas.forEach((r, i) => {
+        if (r.Codigo_Confirmacion) makeQR(`lqr_${i}`, `TRIKLES|${r.Codigo_Confirmacion}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}`, 120);
+      }), 80);
+    }
+  } catch (err) {
+    console.error(err);
+    out.innerHTML = '<div class="empty" style="color:var(--red);">Error al buscar. Intenta de nuevo.</div>';
+  }
+  btn.disabled = false; btn.textContent = 'BUSCAR MIS RESERVAS';
 }
 
 // ============ ADD TO CALENDAR (.ics) ============
 function pad(n) { return String(n).padStart(2, '0'); }
-function icsStamp(dateStr, timeStr) {
-  // dateStr: yyyy-mm-dd ; timeStr: HH:mm (hora local, "flotante")
-  const [y, m, d] = (dateStr || '').split('-').map(Number);
-  let hh = 9, mm = 0;
-  if (timeStr && /\d{1,2}:\d{2}/.test(timeStr)) { const p = timeStr.split(':'); hh = +p[0]; mm = +p[1]; }
-  return `${y}${pad(m)}${pad(d)}T${pad(hh)}${pad(mm)}00`;
-}
-function addToCalendarByEvent(id) {
-  const idx = eventos.findIndex(e => String(e.ID_Evento) === String(id));
-  if (idx >= 0) addToCalendar(idx);
-}
 function addToCalendar(index) {
   const e = eventos[index];
   if (!e || !e.Fecha) { toast('Este evento no tiene fecha definida.', 'error'); return; }
-  const start = icsStamp(e.Fecha, e.Hora_Inicio);
-  const durMin = parseInt(e.Duracion_Min) || 120;
-  // calcula fin sumando duración
   const [y, m, d] = e.Fecha.split('-').map(Number);
-  let hh = 9, mm = 0;
+  let hh = 19, mm = 0;
   if (e.Hora_Inicio && /\d{1,2}:\d{2}/.test(e.Hora_Inicio)) { const p = e.Hora_Inicio.split(':'); hh = +p[0]; mm = +p[1]; }
-  const endDate = new Date(y, m - 1, d, hh, mm + durMin);
-  const end = `${endDate.getFullYear()}${pad(endDate.getMonth()+1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
-  const loc = (config.direccion || 'Cineteca Trikles').replace(/\n/g, ' ');
-
+  const start = `${y}${pad(m)}${pad(d)}T${pad(hh)}${pad(mm)}00`;
+  const durMin = parseInt(e.Duracion_Min) || 120;
+  const endD = new Date(y, m - 1, d, hh, mm + durMin);
+  const end = `${endD.getFullYear()}${pad(endD.getMonth() + 1)}${pad(endD.getDate())}T${pad(endD.getHours())}${pad(endD.getMinutes())}00`;
   const now = new Date();
-  const dtstamp = now.getUTCFullYear() + pad(now.getUTCMonth() + 1) + pad(now.getUTCDate()) + 'T' +
-                  pad(now.getUTCHours()) + pad(now.getUTCMinutes()) + pad(now.getUTCSeconds()) + 'Z';
+  const stamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+  const loc = (config.direccion || 'Cineteca Trikles').replace(/\n/g, ' ');
   const ics = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cineteca Trikles//ES',
-    'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
-    'BEGIN:VEVENT',
-    'UID:trikles-' + (e.ID_Evento || start) + '@cinetecatrikles',
-    'DTSTAMP:' + dtstamp,
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cineteca Trikles//ES', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'BEGIN:VEVENT', 'UID:trikles-' + (e.ID_Evento || start) + '@cinetecatrikles', 'DTSTAMP:' + stamp,
     'DTSTART:' + start, 'DTEND:' + end,
     'SUMMARY:' + icsEsc(e.Titulo || 'Evento Trikles'),
     'DESCRIPTION:' + icsEsc(e.Descripcion || ''),
     'LOCATION:' + icsEsc(loc),
-    'END:VEVENT', 'END:VCALENDAR'
+    'END:VEVENT', 'END:VCALENDAR',
   ].join('\r\n');
-
-  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar;charset=utf-8' }));
   a.download = (e.Titulo || 'evento').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '_') + '.ics';
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
@@ -872,65 +918,32 @@ function addToCalendar(index) {
 }
 function icsEsc(s) { return String(s || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n'); }
 
-// ============ SHARE ============
-async function shareEvent(index) {
-  const e = eventos[index];
-  const url = location.origin + location.pathname + (e.ID_Evento ? '#evento-' + e.ID_Evento : '');
-  const text = `${e.Titulo} · ${formatDate(e.Fecha)} en Cineteca Trikles`;
-  if (navigator.share) {
-    try { await navigator.share({ title: 'Cineteca Trikles', text, url }); return; } catch (err) { if (err && err.name === 'AbortError') return; }
-  }
-  try {
-    await navigator.clipboard.writeText(url);
-    toast('Enlace copiado al portapapeles 🔗', 'success');
-  } catch {
-    window.open(`https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`, '_blank', 'noopener');
-  }
-}
-
-// ============ DEEP LINK ============
-function handleDeepLink() {
-  const m = (location.hash || '').match(/^#evento-(.+)$/);
-  if (!m) return;
-  const idx = eventos.findIndex(e => String(e.ID_Evento) === decodeURIComponent(m[1]));
-  if (idx >= 0) openEventDetail(idx);
-}
-
-// ============ NAVIGATION ============
-function showPage(page, el) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
-  document.getElementById(`page-${page}`).classList.add('active');
-  if (el) { el.classList.add('active'); el.setAttribute('aria-selected', 'true'); }
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-// ============ MODALS (con foco accesible) ============
+// ============ MODAL HELPERS ============
 let lastFocused = null;
 function openModal(id) {
   lastFocused = document.activeElement;
-  const overlay = document.getElementById(id);
-  overlay.classList.add('open');
+  const ov = document.getElementById(id);
+  ov.classList.add('open');
   document.body.style.overflow = 'hidden';
-  const focusable = overlay.querySelector('input, select, textarea, button:not(.modal-close)') || overlay.querySelector('.modal-close');
-  if (focusable) setTimeout(() => focusable.focus(), 50);
+  const f = ov.querySelector('input,select,button:not(.modal-close)');
+  if (f) setTimeout(() => f.focus(), 50);
+  renderCartBar();
 }
 function closeModal(id) {
   document.getElementById(id).classList.remove('open');
-  if (!document.querySelector('.modal-overlay.open')) document.body.style.overflow = '';
-  if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
-  if (id === 'eventModal' && location.hash) history.replaceState(null, '', location.pathname);
+  if (!document.querySelector('.overlay.open')) document.body.style.overflow = '';
+  if (lastFocused && lastFocused.focus) lastFocused.focus();
+  renderCartBar();
 }
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', (e) => { if (e.target === overlay) closeModal(overlay.id); });
+document.querySelectorAll('.overlay').forEach(ov => {
+  ov.addEventListener('click', e => { if (e.target === ov) { if (ov.id === 'orderModal') closeOrder(); else closeModal(ov.id); } });
 });
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.open').forEach(m => closeModal(m.id));
-  // focus trap dentro del modal abierto
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') document.querySelectorAll('.overlay.open').forEach(m => { if (m.id === 'orderModal') closeOrder(); else closeModal(m.id); });
   if (e.key === 'Tab') {
-    const open = document.querySelector('.modal-overlay.open .modal');
+    const open = document.querySelector('.overlay.open .modal');
     if (!open) return;
-    const items = open.querySelectorAll('a[href], button:not([disabled]), input, select, textarea');
+    const items = open.querySelectorAll('a[href],button:not([disabled]),input,select,textarea');
     if (!items.length) return;
     const first = items[0], last = items[items.length - 1];
     if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
@@ -938,252 +951,56 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// ============ TOAST ============
+// ============ HELPERS ============
+function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+function available(e) { return Math.max(0, (parseInt(e.Cupo_Max) || 0) - (parseInt(e.Reservas_Confirmadas) || 0)); }
+function getImageUrl(v) {
+  if (!v || !v.trim()) return '';
+  v = v.trim();
+  return v.startsWith('http') ? v : `https://drive.google.com/thumbnail?id=${v}&sz=w800`;
+}
+function formatDate(s) {
+  if (!s) return '—';
+  try { const [y, m, d] = String(s).split('-').map(Number); if (!y) return s;
+    return cleanDate(new Date(y, m - 1, d).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })); } catch { return s; }
+}
+function cleanDate(s) {
+  // "vie., 29 de may" -> "VIE 29 MAY"
+  return String(s).replace(/,/g, '').replace(/\sde\s/gi, ' ').replace(/\./g, '').replace(/\s+/g, ' ').trim().toUpperCase();
+}
+function eventDate(e) {
+  // "VIE 13 JUN · 19:30"
+  let out = '';
+  if (e.Fecha) {
+    try {
+      const [y, m, d] = e.Fecha.split('-').map(Number);
+      out = cleanDate(new Date(y, m - 1, d).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' }));
+    } catch { out = e.Fecha; }
+  }
+  if (e.Hora_Inicio) out += (out ? ' · ' : '') + e.Hora_Inicio;
+  return out || '—';
+}
+function makeQR(boxId, text, size) {
+  const box = document.getElementById(boxId);
+  if (!box || typeof QRCode === 'undefined') return;
+  box.innerHTML = '';
+  new QRCode(box, { text, width: size, height: size, colorDark: '#171511', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+}
 let toastTimer = null;
 function toast(msg, type = '') {
   const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.className = 'toast show ' + type;
+  t.textContent = msg; t.className = 'toast show ' + type;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { t.className = 'toast ' + type; }, 4000);
 }
 
-// ============ HELPERS ============
-function esc(str) { const d = document.createElement('div'); d.textContent = str == null ? '' : str; return d.innerHTML; }
-
-function getImageUrl(val) {
-  if (!val || !val.trim()) return '';
-  val = val.trim();
-  if (val.startsWith('http')) return val;
-  return `https://drive.google.com/thumbnail?id=${val}&sz=w800`;
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return '—';
-  try {
-    const [y, m, d] = String(dateStr).split('-').map(Number);
-    if (!y || !m || !d) return dateStr;
-    const date = new Date(y, m - 1, d);
-    return date.toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short' });
-  } catch { return dateStr; }
-}
-
-// ============ EXPERIENCES ============
-const EXP_CONFIG = {
-  peticion: { nombre: 'Petición Abierta', precio: 100, icon: '🎬', color: '#c0a8e0' },
-  privado:  { nombre: 'Cine Privado', precio: 250, icon: '🎟️', color: '#d4b06a' },
-  cultural: { nombre: 'Espacio Cultural / Deportivo', precio: 25, icon: '🌿', color: '#70d0c0' },
-};
-let selectedExp = null;
-
-function selectExperience(type) {
-  selectedExp = type;
-  const cfg = EXP_CONFIG[type];
-  document.querySelectorAll('.exp-card').forEach((c, i) => {
-    const types = ['peticion', 'privado', 'cultural'];
-    c.classList.toggle('selected', types[i] === type);
-  });
-
-  const container = document.getElementById('expFormContainer');
-  container.className = 'exp-form-container visible';
-  let specificFields = '';
-
-  if (type === 'peticion') {
-    specificFields = `
-      <div class="public-notice">Esta función será pública. Otras personas podrán unirse y comprar su entrada.</div>
-      <div class="form-group"><label for="xPel">Película que quieres ver *</label><input id="xPel" type="text" class="form-input" name="pelicula" required placeholder="Ej: Interstellar, El Padrino, Coco..."></div>
-      <div class="form-group"><label for="xFec">Fecha deseada *</label><input id="xFec" type="date" class="form-input" name="fecha" required min="${getTomorrow()}"></div>
-      <div class="form-group"><label for="xHor">Horario preferido *</label><select id="xHor" class="form-input" name="hora" required>
-        <option value="">Selecciona...</option><option value="16:00">16:00</option><option value="18:00">18:00</option><option value="20:00">20:00</option><option value="22:00">22:00</option>
-      </select></div>`;
-  } else if (type === 'privado') {
-    specificFields = `
-      <div class="form-group"><label for="xPel">¿Qué quieres proyectar? *</label><input id="xPel" type="text" class="form-input" name="pelicula" required placeholder="Película, documental, video especial, presentación..."></div>
-      <div class="form-group"><label for="xFec">Fecha deseada *</label><input id="xFec" type="date" class="form-input" name="fecha" required min="${getTomorrow()}"></div>
-      <div class="form-group"><label for="xHor">Bloque de 4 horas *</label><select id="xHor" class="form-input" name="hora" required>
-        <option value="">Selecciona bloque...</option><option value="14:00">14:00 – 18:00</option><option value="16:00">16:00 – 20:00</option><option value="18:00">18:00 – 22:00</option><option value="19:00">19:00 – 23:00</option>
-      </select></div>
-      <div class="form-group"><label for="xDet">Detalles adicionales</label><textarea id="xDet" class="form-textarea" name="detalles" placeholder="Cumpleaños, cita, reunión corporativa, decoración especial..."></textarea></div>`;
-  } else if (type === 'cultural') {
-    specificFields = `
-      <div class="form-group"><label for="xTipo">Tipo de evento *</label><select id="xTipo" class="form-input" name="tipo_evento" required>
-        <option value="">Selecciona...</option><option value="Artistico">Artístico (música, teatro, danza, exposición)</option><option value="Cultural">Cultural (conferencia, taller, proyección)</option><option value="Deportivo">Deportivo (torneo, exhibición, entrenamiento)</option>
-      </select></div>
-      <div class="form-group"><label for="xPel">Nombre del evento *</label><input id="xPel" type="text" class="form-input" name="pelicula" required placeholder="Ej: Torneo de ajedrez, Noche de jazz, Expo fotografía..."></div>
-      <div class="form-group"><label for="xFec">Fecha deseada *</label><input id="xFec" type="date" class="form-input" name="fecha" required min="${getTomorrow()}"></div>
-      <div class="form-group"><label for="xHor">Horario preferido *</label><select id="xHor" class="form-input" name="hora" required>
-        <option value="">Selecciona...</option><option value="10:00">10:00</option><option value="14:00">14:00</option><option value="16:00">16:00</option><option value="18:00">18:00</option><option value="20:00">20:00</option>
-      </select></div>
-      <div class="form-group"><label for="xDet">Descripción del evento *</label><textarea id="xDet" class="form-textarea" name="detalles" required placeholder="Cuéntanos de qué se trata tu evento..."></textarea></div>`;
-  }
-
-  container.innerHTML = `
-    <div class="exp-form-title">${cfg.icon} ${esc(cfg.nombre)}</div>
-    <div class="exp-form-subtitle">$${cfg.precio} por persona · Llena los datos para solicitar</div>
-    <form onsubmit="submitExperience(event)">
-      ${specificFields}
-      <div class="form-group"><label for="xAsist">Número de asistentes *</label><input id="xAsist" type="number" class="form-input" name="asistentes" required min="1" max="100" value="1" oninput="updateBudget(this.value)"></div>
-      <div class="budget-box">
-        <div class="budget-label">Presupuesto estimado</div>
-        <div class="budget-total" id="budgetTotal">$${cfg.precio} MXN</div>
-        <div class="budget-breakdown" id="budgetBreakdown">1 persona × $${cfg.precio}</div>
-      </div>
-      <div class="form-group"><label for="xNom">Tu nombre *</label><input id="xNom" type="text" class="form-input" name="nombre" required placeholder="Nombre completo" autocomplete="name"></div>
-      <div class="form-group"><label for="xTel">WhatsApp *</label><input id="xTel" type="tel" class="form-input" name="telefono" required placeholder="+52 ..." autocomplete="tel"></div>
-      <div class="form-group"><label for="xEmail">Email</label><input id="xEmail" type="email" class="form-input" name="email" placeholder="tu@email.com" autocomplete="email"></div>
-      <button type="submit" class="btn btn-primary" id="btnExpSubmit">Solicitar experiencia</button>
-    </form>`;
-  container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-}
-
-function updateBudget(num) {
-  if (!selectedExp) return;
-  const cfg = EXP_CONFIG[selectedExp];
-  const n = Math.max(1, parseInt(num) || 1);
-  const total = n * cfg.precio;
-  document.getElementById('budgetTotal').textContent = `$${total.toLocaleString()} MXN`;
-  document.getElementById('budgetBreakdown').textContent = `${n} persona${n > 1 ? 's' : ''} × $${cfg.precio}`;
-}
-
-function getTomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; }
-
-async function submitExperience(event) {
-  event.preventDefault();
-  const form = event.target;
-  const btn = document.getElementById('btnExpSubmit');
-  btn.disabled = true;
-  btn.textContent = 'Enviando...';
-
-  const cfg = EXP_CONFIG[selectedExp];
-  const asistentes = parseInt(form.asistentes.value) || 1;
-  const total = asistentes * cfg.precio;
-  const tipoEvento = form.tipo_evento ? form.tipo_evento.value : '';
-  const detalles = form.detalles ? form.detalles.value : '';
-  const descripcion = form.pelicula ? form.pelicula.value : '';
-
-  const data = {
-    sheet: 'Solicitudes', Tipo: cfg.nombre,
-    Nombre: form.nombre.value, Telefono: form.telefono.value, Email: form.email.value || '',
-    Descripcion: tipoEvento ? `[${tipoEvento}] ${descripcion} — ${detalles}` : descripcion + (detalles ? ' — ' + detalles : ''),
-    Fecha_Solicitada: form.fecha.value, Hora_Solicitada: form.hora.value,
-    Num_Asistentes: String(asistentes), Precio_Unitario: String(cfg.precio), Total: String(total), Estado: 'Pendiente'
-  };
-
-  let ok = true;
-  try {
-    const resp = await apiPost(data);
-    ok = !resp || resp.status === 'ok' || resp.status === undefined;
-    if (resp && resp.status === 'error') ok = false;
-  } catch (err) { console.error(err); ok = false; }
-
-  if (!ok) {
-    btn.disabled = false;
-    btn.textContent = 'Solicitar experiencia';
-    toast('No se pudo enviar tu solicitud. Inténtalo de nuevo.', 'error');
-    return;
-  }
-
-  document.getElementById('expFormContainer').innerHTML = `
-    <div class="confirmation">
-      <h2>Solicitud enviada</h2>
-      <p>Recibimos tu solicitud de <strong>${esc(cfg.nombre)}</strong> para ${asistentes} persona${asistentes > 1 ? 's' : ''}.</p>
-      <div class="budget-box">
-        <div class="budget-label">Total estimado</div>
-        <div class="budget-total">$${total.toLocaleString()} MXN</div>
-        <div class="budget-breakdown">${formatDate(form.fecha.value)} · ${esc(form.hora.value)}</div>
-      </div>
-      <p style="color:#7a7570;font-size:0.9rem;">Te contactaremos por WhatsApp para confirmar disponibilidad y coordinar el pago.</p>
-      <button class="btn btn-secondary" style="margin-top:16px;" onclick="resetExperience()">Solicitar otra experiencia</button>
-    </div>`;
-}
-
-function resetExperience() {
-  selectedExp = null;
-  document.querySelectorAll('.exp-card').forEach(c => c.classList.remove('selected'));
-  const c = document.getElementById('expFormContainer');
-  c.className = 'exp-form-container';
-  c.innerHTML = '';
-}
-
-// ============ LOOKUP RESERVAS (privado, vía servidor) ============
-async function lookupReserva(event) {
-  event.preventDefault();
-  const btn = document.getElementById('btnLookup');
-  const resultsDiv = document.getElementById('lookupResults');
-  const email = document.getElementById('lookupEmail').value.trim().toLowerCase();
-  if (!email) return;
-
-  btn.disabled = true;
-  btn.textContent = 'Buscando...';
-  resultsDiv.innerHTML = '<div class="loading"><div class="spinner"></div>Buscando tus reservas...</div>';
-
-  try {
-    const resp = await apiGet('lookup', { email });
-    const misReservas = (resp && resp.status === 'ok') ? (resp.reservas || []) : [];
-
-    if (!misReservas.length) {
-      resultsDiv.innerHTML = `
-        <div style="text-align:center; padding:24px 0; color:#7a7570;">
-          <div style="font-size:2rem; margin-bottom:8px;">😕</div>
-          <p>No encontramos reservas con ese email.</p>
-          <p style="font-size:0.85rem; margin-top:8px;">Verifica que sea el mismo email que usaste al reservar.</p>
-        </div>`;
-    } else {
-      misReservas.sort((a, b) => (b.Fecha_Reserva || '').localeCompare(a.Fecha_Reserva || ''));
-      resultsDiv.innerHTML = `
-        <p style="color:#7a7570; font-size:0.85rem; margin-bottom:16px;">
-          Se encontraron <strong style="color:#f5f0e8;">${misReservas.length}</strong> reserva${misReservas.length > 1 ? 's' : ''}
-        </p>` +
-        misReservas.map((r, i) => {
-          const estado = (r.Estado || 'Pendiente').trim();
-          const estadoClass = estado.toLowerCase() === 'confirmada' ? 'confirmada' : 'pendiente';
-          const codigo = r.Codigo_Confirmacion || '—';
-          const cantidad = r.Cantidad_Personas || 1;
-          return `
-            <div class="lookup-card">
-              <div class="lookup-card-header">
-                <span class="lookup-card-title">${esc(r.Titulo_Evento || 'Evento')}</span>
-                <span class="lookup-card-status ${estadoClass}">${esc(estado)}</span>
-              </div>
-              <div class="lookup-card-meta">
-                📅 Reservado el: ${formatDate(r.Fecha_Reserva)}<br>
-                👤 ${esc(r.Nombre || '')}<br>
-                👥 ${esc(String(cantidad))} persona${parseInt(cantidad) > 1 ? 's' : ''}
-              </div>
-              ${codigo !== '—' ? `
-                <div class="lookup-qr-wrap">
-                  <div class="lookup-qr-code">${esc(codigo)}</div>
-                  <div class="lookup-qr-box" id="lookupQR_${i}"></div>
-                  <p style="font-size:0.8rem; color:#7a7570; margin-top:8px;">Muestra este QR al llegar</p>
-                </div>` : ''}
-            </div>`;
-        }).join('');
-
-      setTimeout(() => {
-        misReservas.forEach((r, i) => {
-          if (!r.Codigo_Confirmacion) return;
-          makeQR(`lookupQR_${i}`, `TRIKLES|${r.Codigo_Confirmacion}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}`, 180);
-        });
-      }, 100);
-    }
-  } catch (err) {
-    console.error('Error buscando reservas:', err);
-    resultsDiv.innerHTML = `<div style="text-align:center; padding:24px 0; color:#dc2626;"><p>Error al buscar. Intenta de nuevo.</p></div>`;
-  }
-
-  btn.disabled = false;
-  btn.textContent = 'Buscar mis reservas';
-}
-
-// ============ PWA (instalable + offline shell) ============
+// ============ PWA ============
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => console.warn('SW no registrado:', err));
-  });
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(e => console.warn('SW:', e)));
 }
-window.addEventListener('hashchange', handleDeepLink);
 
 // ============ INIT ============
+renderShop();
 loadData();
 </script>
 </body>
