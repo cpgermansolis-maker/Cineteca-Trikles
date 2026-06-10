@@ -209,6 +209,13 @@ button{font-family:inherit;}
 .btn-primary{width:100%;font-size:13px;font-weight:700;letter-spacing:.12em;padding:17px;background:var(--ink);color:var(--cream);border:none;cursor:pointer;border-radius:2px;transition:background .15s;text-transform:uppercase;}
 .btn-primary:hover{background:var(--red);}
 .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+.field textarea{font-family:'Archivo',sans-serif;font-size:15px;font-weight:500;letter-spacing:0;padding:13px 16px;border:1px solid var(--input-border);background:var(--surface);color:var(--ink);border-radius:2px;resize:vertical;min-height:74px;}
+.field textarea:focus{outline:none;border-color:var(--red);}
+.modal-intro{font-size:13.5px;line-height:1.5;color:var(--mid-gray);background:var(--surface);border:1px solid var(--hairline);border-radius:2px;padding:12px 14px;margin-bottom:18px;}
+.budget{background:var(--ink);color:var(--cream);border-radius:2px;padding:14px 16px;margin-bottom:16px;text-align:center;}
+.budget-label{display:block;font-size:10px;font-weight:700;letter-spacing:.16em;color:var(--gray-on-dark);margin-bottom:2px;}
+.budget-total{display:block;font-size:26px;font-weight:900;color:var(--yellow);}
+.budget-note{display:block;font-size:12px;color:var(--gray-on-dark);margin-top:2px;}
 
 /* confirmation */
 .confirm{text-align:center;padding:12px 0;}
@@ -492,9 +499,36 @@ const PRODUCTS = [
 ];
 
 const EXP = {
-  peticion: { nombre:'Petición abierta', precio:100, meta:'$100 POR PERSONA · FUNCIÓN PÚBLICA' },
-  privado:  { nombre:'Cine privado',     precio:250, meta:'$250 POR PERSONA · SALA EXCLUSIVA 4 HRS' },
-  cultural: { nombre:'Espacio cultural', precio:25,  meta:'$25 POR PERSONA · EVENTO COMUNITARIO' },
+  peticion: {
+    nombre:'Petición abierta', precio:100, meta:'$100 POR PERSONA · FUNCIÓN PÚBLICA',
+    intro:'Elige tu película y horario. La función será pública: otras personas podrán unirse a verla.',
+    fields:[
+      { id:'pelicula', label:'PELÍCULA QUE QUIERES VER', type:'text', required:true, placeholder:'Ej: Interstellar, El Padrino, Coco…' },
+      { id:'fecha', label:'FECHA DESEADA', type:'date', required:true },
+      { id:'hora', label:'HORARIO PREFERIDO', type:'select', required:true, options:['16:00','18:00','20:00','22:00'] },
+    ],
+  },
+  privado: {
+    nombre:'Cine privado', precio:250, meta:'$250 POR PERSONA · SALA EXCLUSIVA 4 HRS',
+    intro:'Privatiza la sala. Dinos qué proyectar y cuándo; solo te contactamos para confirmar.',
+    fields:[
+      { id:'pelicula', label:'¿QUÉ QUIERES PROYECTAR?', type:'text', required:true, placeholder:'Película, documental, video especial, presentación…' },
+      { id:'fecha', label:'FECHA DESEADA', type:'date', required:true },
+      { id:'hora', label:'BLOQUE DE 4 HORAS', type:'select', required:true, options:['14:00 – 18:00','16:00 – 20:00','18:00 – 22:00','19:00 – 23:00'] },
+      { id:'detalles', label:'DETALLES (OPCIONAL)', type:'textarea', required:false, placeholder:'Cumpleaños, cita, reunión, decoración especial…' },
+    ],
+  },
+  cultural: {
+    nombre:'Espacio cultural', precio:25, meta:'$25 POR PERSONA · EVENTO COMUNITARIO',
+    intro:'Crea tu evento aquí mismo. Con estos datos lo dejamos listo; solo confirmamos contigo.',
+    fields:[
+      { id:'tipo_evento', label:'TIPO DE EVENTO', type:'select', required:true, options:['Artístico (música, teatro, danza, exposición)','Cultural (conferencia, taller, proyección)','Deportivo (torneo, exhibición, entrenamiento)'] },
+      { id:'pelicula', label:'NOMBRE DEL EVENTO', type:'text', required:true, placeholder:'Ej: Torneo de ajedrez, Noche de jazz, Expo foto…' },
+      { id:'fecha', label:'FECHA DESEADA', type:'date', required:true },
+      { id:'hora', label:'HORARIO PREFERIDO', type:'select', required:true, options:['10:00','14:00','16:00','18:00','20:00'] },
+      { id:'detalles', label:'DESCRIPCIÓN DEL EVENTO', type:'textarea', required:true, placeholder:'Cuéntanos de qué se trata tu evento…' },
+    ],
+  },
 };
 
 // ============ API ============
@@ -704,7 +738,9 @@ function openOrder() {
       ${lines}
       <div class="order-total"><span class="t">TOTAL</span><span class="v">$${cartTotal()}</span></div>
     </div>
-    <button type="button" class="btn-primary" onclick="confirmOrder()">CONFIRMAR PEDIDO</button>
+    <label class="field">TU NOMBRE<input id="oName" type="text" placeholder="Nombre" autocomplete="name"></label>
+    <label class="field">WHATSAPP<input id="oPhone" type="tel" placeholder="+52 1 …" autocomplete="tel"></label>
+    <button type="button" class="btn-primary" id="oSubmit" onclick="confirmOrder()">CONFIRMAR PEDIDO</button>
     <p class="confirm-note" style="text-align:center;">Pagas al recoger en dulcería, o por transferencia.</p>`;
   openModal('orderModal');
   renderCartBar();
@@ -716,9 +752,17 @@ function closeOrder() {
   if (placed) { cart = {}; renderShop(); }
   renderCartBar();
 }
-function confirmOrder() {
+async function confirmOrder() {
+  const name = val('oName'), phone = val('oPhone');
+  if (!name || !phone) { toast('Completa tu nombre y WhatsApp para el pedido.', 'error'); return; }
   const n = cartCount(), total = cartTotal();
   const code = 'DUL-' + Math.floor(1000 + Math.random() * 9000);
+  const articulos = PRODUCTS.filter(p => cart[p.id]).map(p => `${p.name} x${cart[p.id]}`).join('; ');
+  const btn = document.getElementById('oSubmit');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  try {
+    await apiPost({ sheet: 'Pedidos', Codigo: code, Nombre: name, Telefono: phone, Email: '', Articulos: articulos, Total: String(total), Estado: 'Pendiente' });
+  } catch (err) { console.error('Pedido no registrado en backend:', err); }
   document.getElementById('orderModal').dataset.placed = '1';
   document.getElementById('orderBody').innerHTML = `
     <div class="confirm">
@@ -745,34 +789,78 @@ function openExperience(key) {
   renderReserveForm();
   openModal('reserveModal');
 }
+function fieldHtml(f) {
+  let input;
+  if (f.type === 'select') {
+    input = `<select id="x_${f.id}"><option value="">Selecciona…</option>` +
+      f.options.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('') + `</select>`;
+  } else if (f.type === 'textarea') {
+    input = `<textarea id="x_${f.id}" rows="3" placeholder="${esc(f.placeholder || '')}"></textarea>`;
+  } else if (f.type === 'date') {
+    input = `<input id="x_${f.id}" type="date" min="${getTomorrow()}">`;
+  } else {
+    input = `<input id="x_${f.id}" type="text" placeholder="${esc(f.placeholder || '')}">`;
+  }
+  return `<label class="field">${esc(f.label)}${input}</label>`;
+}
 function renderReserveForm() {
   const c = reserveCtx;
-  let seatsField;
+  const body = document.getElementById('reserveBody');
+  const head = `
+    <div class="modal-cat">${esc(c.type)}</div>
+    <h2 class="modal-title">${esc(c.title)}</h2>
+    <p class="modal-meta">${esc(c.meta)}</p>`;
+  const contact = `
+    <label class="field">NOMBRE COMPLETO<input id="rName" type="text" placeholder="Tu nombre" autocomplete="name"></label>
+    <label class="field">WHATSAPP<input id="rPhone" type="tel" placeholder="+52 1 …" autocomplete="tel"></label>
+    <label class="field">EMAIL<input id="rEmail" type="email" placeholder="tu@email.com" autocomplete="email"></label>`;
+
   if (c.kind === 'evento') {
     const disp = Math.max(1, available(eventos[c.index]));
     let opts = '';
     for (let i = 1; i <= Math.min(disp, 4); i++) opts += `<option value="${i}">${i} lugar${i > 1 ? 'es' : ''}</option>`;
-    seatsField = `<label class="field">LUGARES<select id="rSeats">${opts}</select></label>`;
+    body.innerHTML = head + contact +
+      `<label class="field">LUGARES<select id="rSeats">${opts}</select></label>
+       <button type="button" class="btn-primary" id="rSubmit" style="margin-top:8px;" onclick="submitReserve()">CONFIRMAR RESERVA</button>`;
   } else {
-    seatsField = `<label class="field">ASISTENTES<input id="rSeats" type="number" min="1" max="100" value="1"></label>`;
+    const x = EXP[c.expKey];
+    body.innerHTML = head +
+      `<p class="modal-intro">${esc(x.intro)}</p>
+       ${x.fields.map(fieldHtml).join('')}
+       <label class="field">N° DE ASISTENTES<input id="rSeats" type="number" min="1" max="100" value="1" oninput="updateExpBudget()"></label>
+       <div class="budget" id="expBudget"></div>
+       ${contact}
+       <button type="button" class="btn-primary" id="rSubmit" style="margin-top:8px;" onclick="submitReserve()">ENVIAR SOLICITUD</button>`;
+    updateExpBudget();
   }
-  document.getElementById('reserveBody').innerHTML = `
-    <div class="modal-cat">${esc(c.type)}</div>
-    <h2 class="modal-title">${esc(c.title)}</h2>
-    <p class="modal-meta">${esc(c.meta)}</p>
-    <label class="field">NOMBRE COMPLETO<input id="rName" type="text" placeholder="Tu nombre" autocomplete="name"></label>
-    <label class="field">EMAIL<input id="rEmail" type="email" placeholder="tu@email.com" autocomplete="email"></label>
-    ${seatsField}
-    <button type="button" class="btn-primary" id="rSubmit" style="margin-top:8px;" onclick="submitReserve()">
-      ${c.kind === 'evento' ? 'CONFIRMAR RESERVA' : 'ENVIAR SOLICITUD'}</button>`;
 }
+function updateExpBudget() {
+  const c = reserveCtx;
+  if (!c || c.kind !== 'experiencia') return;
+  const x = EXP[c.expKey];
+  const n = Math.max(1, parseInt(document.getElementById('rSeats').value) || 1);
+  const el = document.getElementById('expBudget');
+  if (el) el.innerHTML = `<span class="budget-label">ESTIMADO</span><span class="budget-total">$${(n * x.precio).toLocaleString()} MXN</span><span class="budget-note">${n} × $${x.precio} por persona</span>`;
+}
+function getTomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return d.toISOString().split('T')[0]; }
 
+function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function buildExpDescripcion(key) {
+  if (key === 'peticion') return 'Película: ' + val('x_pelicula');
+  if (key === 'privado') { const d = val('x_detalles'); return 'Proyección: ' + val('x_pelicula') + (d ? ' — ' + d : ''); }
+  if (key === 'cultural') { const d = val('x_detalles'); return '[' + val('x_tipo_evento') + '] ' + val('x_pelicula') + (d ? ' — ' + d : ''); }
+  return '';
+}
 async function submitReserve() {
   const c = reserveCtx;
-  const name = document.getElementById('rName').value.trim();
-  const email = document.getElementById('rEmail').value.trim();
+  const name = val('rName'), phone = val('rPhone'), email = val('rEmail');
   const seats = parseInt(document.getElementById('rSeats').value) || 1;
-  if (!name || !email) { toast('Completa tu nombre y email.', 'error'); return; }
+  if (!name || !phone || !email) { toast('Completa nombre, WhatsApp y email.', 'error'); return; }
+  if (c.kind === 'experiencia') {
+    for (const f of EXP[c.expKey].fields) {
+      if (f.required && !val('x_' + f.id)) { toast('Completa: ' + f.label.toLowerCase() + '.', 'error'); return; }
+    }
+  }
 
   const btn = document.getElementById('rSubmit');
   btn.disabled = true; btn.textContent = 'Enviando…';
@@ -782,7 +870,7 @@ async function submitReserve() {
       const e = eventos[c.index];
       const code = 'TRK-' + Date.now().toString(36).toUpperCase().slice(-6);
       const data = {
-        ID_Evento: e.ID_Evento, Titulo_Evento: e.Titulo, Nombre: name, Telefono: '', Email: email,
+        ID_Evento: e.ID_Evento, Titulo_Evento: e.Titulo, Nombre: name, Telefono: phone, Email: email,
         Cantidad_Personas: String(seats), Codigo_Confirmacion: code, Notas: '',
         Fecha_Reserva: new Date().toISOString().split('T')[0], Estado: 'Confirmada',
       };
@@ -798,8 +886,8 @@ async function submitReserve() {
     } else {
       const x = EXP[c.expKey];
       const data = {
-        sheet: 'Solicitudes', Tipo: x.nombre, Nombre: name, Telefono: '', Email: email,
-        Descripcion: '', Fecha_Solicitada: '', Hora_Solicitada: '',
+        sheet: 'Solicitudes', Tipo: x.nombre, Nombre: name, Telefono: phone, Email: email,
+        Descripcion: buildExpDescripcion(c.expKey), Fecha_Solicitada: val('x_fecha'), Hora_Solicitada: val('x_hora'),
         Num_Asistentes: String(seats), Precio_Unitario: String(x.precio), Total: String(seats * x.precio), Estado: 'Pendiente',
       };
       const resp = await apiPost(data);
@@ -834,7 +922,7 @@ function showSolicitudConfirmation(x, seats) {
       <div class="confirm-serif">Gracias por tu interés</div>
       <h2 class="confirm-h2">Solicitud enviada</h2>
       <p class="confirm-sub">${esc(x.nombre)} · ${seats} persona${seats > 1 ? 's' : ''} · $${(seats * x.precio).toLocaleString()} MXN aprox.</p>
-      <p class="confirm-note">Te contactaremos por email para confirmar fecha, disponibilidad y coordinar el pago.</p>
+      <p class="confirm-note">Ya tenemos todos los detalles de tu evento. Te contactaremos por WhatsApp solo para confirmar disponibilidad y coordinar el pago.</p>
     </div>`;
 }
 
