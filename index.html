@@ -490,13 +490,16 @@ let activeFilter = 'Todos';
 let cart = {};                 // id -> qty
 let reserveCtx = null;         // contexto del modal de reserva/solicitud
 
-// Catálogo de tienda (cliente — sin backend por ahora)
+// Catálogo de tienda — respaldo si el backend aún no tiene la hoja Productos.
 const PRODUCTS = [
-  { id:'combo-clasico',   tag:'COMBO',          name:'Clásico',          desc:'Palomitas recién hechas y refresco. El básico de toda función.',  price:80,  note:'' },
-  { id:'combo-cinefilo',  tag:'COMBO',          name:'Cinéfilo',         desc:'Palomitas grandes, dos bebidas y dulce. Para compartir butaca.',   price:150, note:'' },
-  { id:'paquete-funcion', tag:'BOLETO + COMBO', name:'Función completa', desc:'Tu lugar en cualquier función de cartelera más el combo clásico.', price:170, note:'' },
-  { id:'membresia',       tag:'MEMBRESÍA',      name:'Socio Trikles',    desc:'Cuatro funciones al mes, palomitas incluidas y preventa de eventos.', price:300, note:'/ mes' },
+  { id:'combo-clasico',   tag:'COMBO',          name:'Clásico',          desc:'Palomitas recién hechas y refresco. El básico de toda función.',  price:80,  note:'', stock:null, img:'' },
+  { id:'combo-cinefilo',  tag:'COMBO',          name:'Cinéfilo',         desc:'Palomitas grandes, dos bebidas y dulce. Para compartir butaca.',   price:150, note:'', stock:null, img:'' },
+  { id:'paquete-funcion', tag:'BOLETO + COMBO', name:'Función completa', desc:'Tu lugar en cualquier función de cartelera más el combo clásico.', price:170, note:'', stock:null, img:'' },
+  { id:'membresia',       tag:'MEMBRESÍA',      name:'Socio Trikles',    desc:'Cuatro funciones al mes, palomitas incluidas y preventa de eventos.', price:300, note:'/ mes', stock:null, img:'' },
 ];
+// Catálogo activo (se reemplaza con la hoja Productos del backend en loadData).
+let SHOP = PRODUCTS.slice();
+function prod(id) { return SHOP.find(p => p.id === id); }
 
 const EXP = {
   peticion: {
@@ -558,6 +561,15 @@ async function loadData() {
     (data.tipos || []).forEach(r => { if (r.Tipo) tiposEvento[r.Tipo] = r; });
     eventos = (data.eventos || []).sort((a, b) => (a.Fecha || '').localeCompare(b.Fecha || ''));
     impacto = data.impacto || [];
+    if (Array.isArray(data.productos) && data.productos.length) {
+      SHOP = data.productos.map(p => ({
+        id: p.id, tag: p.Tag || '', name: p.Nombre || '', desc: p.Descripcion || '',
+        price: parseInt(p.Precio, 10) || 0, note: p.Nota || '',
+        stock: (p.Stock === '' || p.Stock == null) ? null : (parseInt(p.Stock, 10) || 0),
+        img: p.Imagen_URL || '',
+      }));
+      renderShop();
+    }
     renderConfig();
     renderFeatured();
     buildChips();
@@ -686,17 +698,22 @@ function renderImpact() {
 
 // ============ TIENDA ============
 function renderShop() {
-  document.getElementById('shopGrid').innerHTML = PRODUCTS.map(p => {
+  document.getElementById('shopGrid').innerHTML = SHOP.map(p => {
     const qty = cart[p.id] || 0;
-    const control = qty === 0
-      ? `<button type="button" class="btn-add" onclick="changeQty('${p.id}',1)">AGREGAR +</button>`
-      : `<span class="stepper">
+    const agotado = p.stock != null && p.stock <= 0;
+    const photo = p.img
+      ? `<img class="product-photo" src="${getImageUrl(p.img)}" alt="${esc(p.name)}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'product-photo',textContent:'🍿'}))">`
+      : `<div class="product-photo">🍿</div>`;
+    let control;
+    if (agotado) control = `<span class="event-spots" style="color:var(--red);font-weight:700;">AGOTADO</span>`;
+    else if (qty === 0) control = `<button type="button" class="btn-add" onclick="changeQty('${p.id}',1)">AGREGAR +</button>`;
+    else control = `<span class="stepper">
            <button type="button" class="step-btn step-minus" aria-label="Quitar uno" onclick="changeQty('${p.id}',-1)">−</button>
            <span class="step-qty">${qty}</span>
            <button type="button" class="step-btn step-plus" aria-label="Agregar uno" onclick="changeQty('${p.id}',1)">+</button>
          </span>`;
     return `<div class="product">
-      <div class="product-photo">🍿</div>
+      ${photo}
       <span class="product-tag">${esc(p.tag)}</span>
       <h3 class="product-name">${esc(p.name)}</h3>
       <p class="product-desc">${esc(p.desc)}</p>
@@ -708,13 +725,15 @@ function renderShop() {
   }).join('');
 }
 function changeQty(id, d) {
-  const q = (cart[id] || 0) + d;
+  const p = prod(id);
+  let q = (cart[id] || 0) + d;
+  if (p && p.stock != null && q > p.stock) { q = p.stock; toast('No hay más stock de ' + p.name + '.', 'error'); }
   if (q <= 0) delete cart[id]; else cart[id] = q;
   renderShop();
   renderCartBar();
 }
 function cartCount() { return Object.values(cart).reduce((n, q) => n + q, 0); }
-function cartTotal() { return PRODUCTS.reduce((n, p) => n + (cart[p.id] || 0) * p.price, 0); }
+function cartTotal() { return SHOP.reduce((n, p) => n + (cart[p.id] || 0) * p.price, 0); }
 function renderCartBar() {
   const bar = document.getElementById('cartBar');
   const n = cartCount();
@@ -728,7 +747,7 @@ function renderCartBar() {
 // ============ ORDER MODAL ============
 function openOrder() {
   if (!cartCount()) return;
-  const lines = PRODUCTS.filter(p => cart[p.id]).map(p =>
+  const lines = SHOP.filter(p => cart[p.id]).map(p =>
     `<div class="order-line"><span><span style="font-weight:600;">${esc(p.name)}</span> <span class="qn">× ${cart[p.id]}</span></span><span style="font-weight:800;">$${cart[p.id] * p.price}</span></div>`
   ).join('');
   document.getElementById('orderBody').innerHTML = `
@@ -757,7 +776,7 @@ async function confirmOrder() {
   if (!name || !phone) { toast('Completa tu nombre y WhatsApp para el pedido.', 'error'); return; }
   const n = cartCount(), total = cartTotal();
   const code = 'DUL-' + Math.floor(1000 + Math.random() * 9000);
-  const articulos = PRODUCTS.filter(p => cart[p.id]).map(p => `${p.name} x${cart[p.id]}`).join('; ');
+  const articulos = SHOP.filter(p => cart[p.id]).map(p => `${p.name} x${cart[p.id]}`).join('; ');
   const btn = document.getElementById('oSubmit');
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
   try {

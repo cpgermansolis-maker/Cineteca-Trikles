@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel · Cineteca Trikles</title>
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#171511">
+<link rel="icon" href="logo.png.jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root{
+  --cream:#F6F3EC; --surface:#FFFDF8; --ink:#171511; --red:#C8311B; --yellow:#F2B705;
+  --warm-gray:#877F70; --mid-gray:#5C564A; --hairline:#E0D9C9; --input-border:#D6CFBE; --beige:#ECE7DB;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Archivo',sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;min-height:100vh;}
+.serif{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400;}
+img{max-width:100%;display:block;}
+button{font-family:inherit;cursor:pointer;}
+input,select,textarea{font-family:'Archivo',sans-serif;font-size:15px;padding:11px 14px;border:1px solid var(--input-border);background:var(--surface);color:var(--ink);border-radius:2px;width:100%;}
+input:focus,select,textarea:focus{outline:none;border-color:var(--red);}
+textarea{min-height:70px;resize:vertical;}
+:focus-visible{outline:2px solid var(--red);outline-offset:2px;}
+
+.btn{font-size:12px;font-weight:700;letter-spacing:.1em;padding:12px 20px;border:none;border-radius:2px;text-transform:uppercase;transition:background .15s,color .15s;}
+.btn-ink{background:var(--ink);color:var(--cream);} .btn-ink:hover{background:var(--red);}
+.btn-out{background:transparent;border:1px solid var(--ink);color:var(--ink);} .btn-out:hover{background:var(--ink);color:var(--cream);}
+.btn-red{background:var(--red);color:#fff;} .btn-red:hover{background:#a8260f;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-sm{padding:8px 14px;font-size:11px;}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.login-card{background:var(--surface);border:1px solid var(--hairline);border-radius:2px;max-width:380px;width:100%;padding:40px;}
+.login-card h1{font-size:26px;font-weight:900;text-transform:uppercase;letter-spacing:-.01em;}
+.login-card .sub{color:var(--warm-gray);font-size:14px;margin-bottom:24px;}
+.field{display:flex;flex-direction:column;gap:6px;font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--mid-gray);margin-bottom:16px;text-transform:uppercase;}
+
+/* APP */
+.topbar{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 24px;background:var(--ink);color:var(--cream);flex-wrap:wrap;}
+.topbar .brand{font-size:14px;font-weight:900;letter-spacing:.08em;}
+.topbar .who{font-size:13px;color:#B5AD9D;}
+.topbar .actions{display:flex;gap:8px;}
+.topbar .btn-out{border-color:#3A352B;color:var(--cream);} .topbar .btn-out:hover{background:var(--cream);color:var(--ink);}
+.wrap{max-width:1080px;margin:0 auto;padding:24px;}
+.tabs{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap;}
+.tab{font-size:12px;font-weight:700;letter-spacing:.1em;padding:10px 18px;border-radius:2px;text-transform:uppercase;background:transparent;border:1px solid var(--hairline);color:var(--warm-gray);}
+.tab.active{background:var(--ink);color:var(--cream);border-color:var(--ink);}
+.tab:disabled{opacity:.5;}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:16px;border-top:1px solid var(--ink);padding-top:14px;margin-bottom:18px;flex-wrap:wrap;}
+.panel-head .label{font-size:12px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;}
+
+.row{display:grid;grid-template-columns:64px 1fr auto;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--hairline);}
+.row .thumb{width:56px;height:74px;background:var(--beige);object-fit:cover;border-radius:2px;}
+.row .pthumb{width:56px;height:56px;}
+.row .rtitle{font-size:16px;font-weight:800;text-transform:uppercase;line-height:1.1;}
+.row .rmeta{font-size:12.5px;color:var(--warm-gray);margin-top:3px;}
+.row .ractions{display:flex;gap:8px;}
+.tag-red{font-size:10px;font-weight:700;letter-spacing:.14em;color:var(--red);}
+.pill{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.08em;padding:2px 8px;border-radius:2px;text-transform:uppercase;}
+.pill.on{background:#11331f;color:#7ee0a6;} .pill.off{background:#eee;color:#999;}
+
+/* MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(23,21,17,.6);backdrop-filter:blur(4px);z-index:200;justify-content:center;align-items:flex-start;padding:24px;overflow-y:auto;}
+.overlay.open{display:flex;}
+.modal{background:var(--cream);width:100%;max-width:560px;padding:36px;border-radius:2px;position:relative;margin:auto;}
+.modal h2{font-size:24px;font-weight:900;text-transform:uppercase;margin-bottom:20px;}
+.modal-close{position:absolute;top:14px;right:14px;width:32px;height:32px;border:1px solid var(--hairline);background:transparent;border-radius:2px;font-size:15px;}
+.modal-close:hover{background:var(--ink);color:var(--cream);}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.imgrow{display:flex;gap:12px;align-items:center;margin-bottom:16px;}
+.imgrow .prev{width:64px;height:64px;background:var(--beige);object-fit:cover;border-radius:2px;flex:none;}
+
+.empty{padding:40px 0;text-align:center;color:var(--warm-gray);}
+.spinner{width:24px;height:24px;border:3px solid var(--hairline);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(140%);background:var(--ink);color:var(--cream);border-radius:2px;padding:13px 22px;font-size:14px;font-weight:600;z-index:400;box-shadow:0 16px 40px rgba(0,0,0,.35);transition:transform .3s;max-width:90vw;text-align:center;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.error{border-bottom:3px solid var(--red);} .toast.success{border-bottom:3px solid var(--yellow);}
+.hint{font-size:12px;color:var(--warm-gray);margin-top:6px;}
+@media(max-width:640px){ .grid2{grid-template-columns:1fr;} .row{grid-template-columns:56px 1fr;} .row .ractions{grid-column:1 / -1;} .modal{padding:28px 20px;} }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginView" class="login-wrap">
+  <div class="login-card">
+    <h1>Panel Trikles</h1>
+    <p class="sub serif">La casa del arte — administración</p>
+    <form onsubmit="doLogin(event)">
+      <label class="field">USUARIO<input id="liUser" type="text" autocomplete="username" autocapitalize="none"></label>
+      <label class="field">CONTRASEÑA<input id="liPass" type="password" autocomplete="current-password"></label>
+      <button type="submit" class="btn btn-ink" id="liBtn" style="width:100%;">Entrar</button>
+    </form>
+    <p class="hint" id="liMsg"></p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appView" style="display:none;">
+  <div class="topbar">
+    <span class="brand">CINETECA TRIKLES · PANEL</span>
+    <span class="who" id="whoName"></span>
+    <span class="actions">
+      <button class="btn btn-out btn-sm" onclick="openChangePass()">Cambiar contraseña</button>
+      <button class="btn btn-out btn-sm" onclick="logout()">Salir</button>
+    </span>
+  </div>
+  <div class="wrap">
+    <div class="tabs">
+      <button class="tab active" id="tabCartelera" onclick="showTab('cartelera')">Cartelera</button>
+      <button class="tab" id="tabDulceria" onclick="showTab('dulceria')">Dulcería</button>
+      <button class="tab" disabled title="Próximamente">Finanzas · próximamente</button>
+    </div>
+
+    <div id="panelCartelera">
+      <div class="panel-head">
+        <span class="label">Funciones</span>
+        <button class="btn btn-ink btn-sm" onclick="openEventForm()">+ Nueva función</button>
+      </div>
+      <div id="eventsList"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+    <div id="panelDulceria" style="display:none;">
+      <div class="panel-head">
+        <span class="label">Productos de dulcería</span>
+        <button class="btn btn-ink btn-sm" onclick="openProductForm()">+ Nuevo producto</button>
+      </div>
+      <div id="productsList"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL FORM -->
+<div class="overlay" id="formModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeOverlay('formModal')" aria-label="Cerrar">✕</button>
+    <div id="formBody"></div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR CONTRASEÑA -->
+<div class="overlay" id="passModal">
+  <div class="modal" style="max-width:420px;">
+    <button class="modal-close" onclick="closeOverlay('passModal')" aria-label="Cerrar">✕</button>
+    <h2>Cambiar contraseña</h2>
+    <label class="field">CONTRASEÑA ACTUAL<input id="cpActual" type="password" autocomplete="current-password"></label>
+    <label class="field">NUEVA CONTRASEÑA<input id="cpNueva" type="password" autocomplete="new-password"></label>
+    <button class="btn btn-ink" style="width:100%;" onclick="changePass()">Guardar</button>
+    <p class="hint">Mínimo 6 caracteres.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw3skEAAbt6skxAiSon39EHPOdEAw6gXcUbtFMxCfNHNL-OqisUgD-DQ5fGTm_1FGq-/exec';
+const TK = 'trikles_admin_token', NM = 'trikles_admin_name';
+let token = localStorage.getItem(TK) || '';
+let adminName = localStorage.getItem(NM) || '';
+let eventos = [], productos = [];
+
+async function api(payload) {
+  const res = await fetch(APPS_SCRIPT_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  return res.json();
+}
+function esc(s){ const d=document.createElement('div'); d.textContent = s==null?'':s; return d.innerHTML; }
+function val(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
+let toastT=null;
+function toast(m,t=''){ const e=document.getElementById('toast'); e.textContent=m; e.className='toast show '+t; clearTimeout(toastT); toastT=setTimeout(()=>e.className='toast '+t,4000); }
+function getImageUrl(v){ if(!v||!v.trim())return''; v=v.trim(); return v.startsWith('http')?v:`https://drive.google.com/thumbnail?id=${v}&sz=w800`; }
+
+// ===== AUTH =====
+async function doLogin(e){
+  e.preventDefault();
+  const u=val('liUser'), p=val('liPass'); const btn=document.getElementById('liBtn');
+  if(!u||!p){ document.getElementById('liMsg').textContent='Ingresa usuario y contraseña.'; return; }
+  btn.disabled=true; btn.textContent='Entrando…';
+  try{
+    const r=await api({action:'login', usuario:u, pass:p});
+    if(r.status==='ok'){ token=r.token; adminName=r.nombre||u; localStorage.setItem(TK,token); localStorage.setItem(NM,adminName); enterApp(); }
+    else { document.getElementById('liMsg').textContent=r.message||'No se pudo entrar.'; }
+  }catch(err){ document.getElementById('liMsg').textContent='Error de conexión.'; }
+  btn.disabled=false; btn.textContent='Entrar';
+}
+function logout(){ token=''; localStorage.removeItem(TK); localStorage.removeItem(NM); location.reload(); }
+function sessionExpired(){ toast('Sesión expirada, vuelve a entrar.','error'); setTimeout(logout, 1500); }
+
+async function enterApp(){
+  document.getElementById('loginView').style.display='none';
+  document.getElementById('appView').style.display='block';
+  document.getElementById('whoName').textContent = adminName ? ('Hola, '+adminName) : '';
+  await loadAll();
+}
+async function loadAll(){
+  try{
+    const r=await api({action:'adminList', token});
+    if(r.status!=='ok'){ sessionExpired(); return; }
+    eventos = r.eventos||[]; productos = r.productos||[];
+    renderEvents(); renderProducts();
+  }catch(err){ toast('No se pudieron cargar los datos.','error'); }
+}
+
+// ===== TABS =====
+function showTab(t){
+  document.getElementById('panelCartelera').style.display = t==='cartelera'?'block':'none';
+  document.getElementById('panelDulceria').style.display = t==='dulceria'?'block':'none';
+  document.getElementById('tabCartelera').classList.toggle('active', t==='cartelera');
+  document.getElementById('tabDulceria').classList.toggle('active', t==='dulceria');
+}
+
+// ===== CARTELERA =====
+function renderEvents(){
+  const el=document.getElementById('eventsList');
+  if(!eventos.length){ el.innerHTML='<div class="empty">Sin funciones. Crea la primera con “+ Nueva función”.</div>'; return; }
+  el.innerHTML = eventos.map((e,i)=>{
+    const img=getImageUrl(e.Imagen_URL);
+    const activo = e.Estado==='Activo';
+    return `<div class="row">
+      ${img?`<img class="thumb" src="${img}" alt="" onerror="this.style.visibility='hidden'">`:`<span class="thumb"></span>`}
+      <div>
+        <span class="tag-red">${esc(e.Tipo||'')}${e.Es_Privado==='Sí'?' · PRIVADO':''}</span>
+        <div class="rtitle">${esc(e.Titulo||'(sin título)')}</div>
+        <div class="rmeta">${esc(e.Fecha||'—')} · ${esc(e.Hora_Inicio||'')} · $${esc(e.Precio_MXN||'0')} · cupo ${esc(e.Reservas_Confirmadas||'0')}/${esc(e.Cupo_Max||'0')}
+          <span class="pill ${activo?'on':'off'}">${activo?'Activo':'Oculto'}</span></div>
+      </div>
+      <div class="ractions">
+        <button class="btn btn-out btn-sm" onclick="openEventForm(${i})">Editar</button>
+        <button class="btn btn-red btn-sm" onclick="deleteEvent(${i})">Borrar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openEventForm(i){
+  const e = (i==null)?{}:eventos[i];
+  document.getElementById('formBody').innerHTML = `
+    <h2>${i==null?'Nueva función':'Editar función'}</h2>
+    <input type="hidden" id="f_ID_Evento" value="${esc(e.ID_Evento||'')}">
+    <label class="field">TÍTULO<input id="f_Titulo" type="text" value="${esc(e.Titulo||'')}"></label>
+    <div class="grid2">
+      <label class="field">TIPO<input id="f_Tipo" type="text" placeholder="Película, Documental…" value="${esc(e.Tipo||'')}"></label>
+      <label class="field">PRECIO (MXN)<input id="f_Precio_MXN" type="number" min="0" value="${esc(e.Precio_MXN||'0')}"></label>
+    </div>
+    <label class="field">DESCRIPCIÓN<textarea id="f_Descripcion">${esc(e.Descripcion||'')}</textarea></label>
+    <div class="grid2">
+      <label class="field">FECHA<input id="f_Fecha" type="date" value="${esc(e.Fecha||'')}"></label>
+      <label class="field">HORA<input id="f_Hora_Inicio" type="time" value="${esc(e.Hora_Inicio||'')}"></label>
+    </div>
+    <div class="grid2">
+      <label class="field">DURACIÓN (MIN)<input id="f_Duracion_Min" type="number" min="0" value="${esc(e.Duracion_Min||'')}"></label>
+      <label class="field">CUPO MÁXIMO<input id="f_Cupo_Max" type="number" min="0" value="${esc(e.Cupo_Max||'0')}"></label>
+    </div>
+    <div class="grid2">
+      <label class="field">ESTADO<select id="f_Estado">${opt(['Activo','Inactivo'], e.Estado||'Activo')}</select></label>
+      <label class="field">¿PRIVADO?<select id="f_Es_Privado">${opt(['No','Sí'], e.Es_Privado==='Sí'?'Sí':'No')}</select></label>
+    </div>
+    <label class="field" style="margin-bottom:6px;">IMAGEN (PÓSTER)</label>
+    <div class="imgrow">
+      <img class="prev" id="f_img_prev" src="${getImageUrl(e.Imagen_URL)||''}" alt="" onerror="this.style.visibility='hidden'">
+      <div style="flex:1;">
+        <input type="hidden" id="f_Imagen_URL" value="${esc(e.Imagen_URL||'')}">
+        <input type="file" accept="image/*" id="f_img_file" onchange="uploadImg('f_img_file','f_Imagen_URL','f_img_prev')">
+        <p class="hint">Sube una imagen o pega un enlace abajo.</p>
+        <input type="url" placeholder="…o pega URL de imagen" value="${esc(e.Imagen_URL||'')}" oninput="document.getElementById('f_Imagen_URL').value=this.value;document.getElementById('f_img_prev').src=getImageUrl(this.value);document.getElementById('f_img_prev').style.visibility='visible';">
+      </div>
+    </div>
+    <button class="btn btn-ink" style="width:100%;" id="f_save" onclick="saveEvent()">Guardar función</button>`;
+  openOverlay('formModal');
+}
+async function saveEvent(){
+  const ev={ Titulo:val('f_Titulo'), Tipo:val('f_Tipo'), Descripcion:val('f_Descripcion'),
+    Fecha:val('f_Fecha'), Hora_Inicio:val('f_Hora_Inicio'), Duracion_Min:val('f_Duracion_Min'),
+    Precio_MXN:val('f_Precio_MXN'), Cupo_Max:val('f_Cupo_Max'), Estado:val('f_Estado'),
+    Es_Privado:val('f_Es_Privado'), Imagen_URL:val('f_Imagen_URL') };
+  const id=val('f_ID_Evento'); if(id) ev.ID_Evento=id;
+  if(!ev.Titulo){ toast('Ponle un título.','error'); return; }
+  const btn=document.getElementById('f_save'); btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    const r=await api({action:'saveEvent', token, evento:ev});
+    if(r.status==='ok'){ toast('Función guardada.','success'); closeOverlay('formModal'); await loadAll(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else { toast(r.message||'No se pudo guardar.','error'); btn.disabled=false; btn.textContent='Guardar función'; }
+  }catch(err){ toast('Error de conexión.','error'); btn.disabled=false; btn.textContent='Guardar función'; }
+}
+async function deleteEvent(i){
+  const e=eventos[i];
+  if(!confirm('¿Borrar la función “'+(e.Titulo||'')+'”? Esto no se puede deshacer.')) return;
+  try{
+    const r=await api({action:'deleteEvent', token, id:e.ID_Evento});
+    if(r.status==='ok'){ toast('Función borrada.','success'); await loadAll(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo borrar.','error');
+  }catch(err){ toast('Error de conexión.','error'); }
+}
+
+// ===== DULCERÍA =====
+function renderProducts(){
+  const el=document.getElementById('productsList');
+  if(!productos.length){ el.innerHTML='<div class="empty">Sin productos.</div>'; return; }
+  el.innerHTML = productos.map((p,i)=>{
+    const img=getImageUrl(p.Imagen_URL);
+    const activo = p.Activo!=='No';
+    const margen = (parseFloat(p.Precio)||0) - (parseFloat(p.Costo)||0);
+    return `<div class="row">
+      ${img?`<img class="thumb pthumb" src="${img}" alt="" onerror="this.style.visibility='hidden'">`:`<span class="thumb pthumb"></span>`}
+      <div>
+        <span class="tag-red">${esc(p.Tag||'')}</span>
+        <div class="rtitle">${esc(p.Nombre||'(sin nombre)')}</div>
+        <div class="rmeta">Precio $${esc(p.Precio||'0')}${p.Nota?(' '+esc(p.Nota)):''} · Costo $${esc(p.Costo||'0')} · Margen $${margen} · Stock ${esc(p.Stock||'0')}
+          <span class="pill ${activo?'on':'off'}">${activo?'Visible':'Oculto'}</span></div>
+      </div>
+      <div class="ractions">
+        <button class="btn btn-out btn-sm" onclick="openProductForm(${i})">Editar</button>
+        <button class="btn btn-red btn-sm" onclick="deleteProduct(${i})">Borrar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openProductForm(i){
+  const p=(i==null)?{}:productos[i];
+  document.getElementById('formBody').innerHTML = `
+    <h2>${i==null?'Nuevo producto':'Editar producto'}</h2>
+    <input type="hidden" id="p_id" value="${esc(p.id||'')}">
+    <label class="field">NOMBRE<input id="p_Nombre" type="text" value="${esc(p.Nombre||'')}"></label>
+    <div class="grid2">
+      <label class="field">ETIQUETA<input id="p_Tag" type="text" placeholder="COMBO, MEMBRESÍA…" value="${esc(p.Tag||'')}"></label>
+      <label class="field">NOTA<input id="p_Nota" type="text" placeholder="/ mes (opcional)" value="${esc(p.Nota||'')}"></label>
+    </div>
+    <label class="field">DESCRIPCIÓN<textarea id="p_Descripcion">${esc(p.Descripcion||'')}</textarea></label>
+    <div class="grid2">
+      <label class="field">PRECIO (MXN)<input id="p_Precio" type="number" min="0" value="${esc(p.Precio||'0')}"></label>
+      <label class="field">COSTO (MXN)<input id="p_Costo" type="number" min="0" value="${esc(p.Costo||'0')}"></label>
+    </div>
+    <div class="grid2">
+      <label class="field">STOCK<input id="p_Stock" type="number" min="0" value="${esc(p.Stock||'0')}"></label>
+      <label class="field">ORDEN<input id="p_Orden" type="number" min="0" value="${esc(p.Orden||'')}"></label>
+    </div>
+    <label class="field">VISIBLE EN LA TIENDA<select id="p_Activo">${opt(['Sí','No'], p.Activo==='No'?'No':'Sí')}</select></label>
+    <label class="field" style="margin-bottom:6px;">FOTO DEL PRODUCTO</label>
+    <div class="imgrow">
+      <img class="prev" id="p_img_prev" src="${getImageUrl(p.Imagen_URL)||''}" alt="" onerror="this.style.visibility='hidden'">
+      <div style="flex:1;">
+        <input type="hidden" id="p_Imagen_URL" value="${esc(p.Imagen_URL||'')}">
+        <input type="file" accept="image/*" id="p_img_file" onchange="uploadImg('p_img_file','p_Imagen_URL','p_img_prev')">
+        <p class="hint">Sube una imagen o pega un enlace abajo.</p>
+        <input type="url" placeholder="…o pega URL de imagen" value="${esc(p.Imagen_URL||'')}" oninput="document.getElementById('p_Imagen_URL').value=this.value;document.getElementById('p_img_prev').src=getImageUrl(this.value);document.getElementById('p_img_prev').style.visibility='visible';">
+      </div>
+    </div>
+    <button class="btn btn-ink" style="width:100%;" id="p_save" onclick="saveProduct()">Guardar producto</button>`;
+  openOverlay('formModal');
+}
+async function saveProduct(){
+  const p={ Nombre:val('p_Nombre'), Tag:val('p_Tag'), Nota:val('p_Nota'), Descripcion:val('p_Descripcion'),
+    Precio:val('p_Precio'), Costo:val('p_Costo'), Stock:val('p_Stock'), Orden:val('p_Orden'),
+    Activo:val('p_Activo'), Imagen_URL:val('p_Imagen_URL') };
+  const id=val('p_id'); if(id) p.id=id;
+  if(!p.Nombre){ toast('Ponle un nombre.','error'); return; }
+  const btn=document.getElementById('p_save'); btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    const r=await api({action:'saveProduct', token, producto:p});
+    if(r.status==='ok'){ toast('Producto guardado.','success'); closeOverlay('formModal'); await loadAll(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else { toast(r.message||'No se pudo guardar.','error'); btn.disabled=false; btn.textContent='Guardar producto'; }
+  }catch(err){ toast('Error de conexión.','error'); btn.disabled=false; btn.textContent='Guardar producto'; }
+}
+async function deleteProduct(i){
+  const p=productos[i];
+  if(!confirm('¿Borrar el producto “'+(p.Nombre||'')+'”?')) return;
+  try{
+    const r=await api({action:'deleteProduct', token, id:p.id});
+    if(r.status==='ok'){ toast('Producto borrado.','success'); await loadAll(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo borrar.','error');
+  }catch(err){ toast('Error de conexión.','error'); }
+}
+
+// ===== IMAGEN =====
+function uploadImg(fileId, targetId, prevId){
+  const f=document.getElementById(fileId).files[0]; if(!f) return;
+  if(f.size > 5*1024*1024){ toast('La imagen es muy pesada (máx 5 MB).','error'); return; }
+  toast('Subiendo imagen…');
+  const reader=new FileReader();
+  reader.onload = async ()=>{
+    try{
+      const r=await api({action:'uploadImage', token, dataUrl:reader.result, filename:f.name});
+      if(r.status==='ok'){
+        document.getElementById(targetId).value=r.url;
+        const prev=document.getElementById(prevId); prev.src=r.url; prev.style.visibility='visible';
+        toast('Imagen subida.','success');
+      } else if(/sesión/i.test(r.message||'')) sessionExpired();
+      else toast(r.message||'No se pudo subir.','error');
+    }catch(err){ toast('No se pudo subir la imagen.','error'); }
+  };
+  reader.readAsDataURL(f);
+}
+
+// ===== CONTRASEÑA =====
+function openChangePass(){ openOverlay('passModal'); }
+async function changePass(){
+  const actual=val('cpActual'), nueva=val('cpNueva');
+  if(!actual||!nueva){ toast('Llena ambos campos.','error'); return; }
+  try{
+    const r=await api({action:'changePassword', token, actual, nueva});
+    if(r.status==='ok'){ toast('Contraseña actualizada.','success'); closeOverlay('passModal'); document.getElementById('cpActual').value=''; document.getElementById('cpNueva').value=''; }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo cambiar.','error');
+  }catch(err){ toast('Error de conexión.','error'); }
+}
+
+// ===== HELPERS UI =====
+function opt(arr, sel){ return arr.map(o=>`<option value="${esc(o)}"${o===sel?' selected':''}>${esc(o)}</option>`).join(''); }
+function openOverlay(id){ document.getElementById(id).classList.add('open'); document.body.style.overflow='hidden'; }
+function closeOverlay(id){ document.getElementById(id).classList.remove('open'); if(!document.querySelector('.overlay.open')) document.body.style.overflow=''; }
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{ if(e.target===o) closeOverlay(o.id); }));
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') document.querySelectorAll('.overlay.open').forEach(o=>closeOverlay(o.id)); });
+
+// ===== INIT =====
+if(token){ enterApp(); } else { document.getElementById('loginView').style.display='flex'; }
+</script>
+</body>
+</html>
