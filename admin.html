@@ -81,7 +81,18 @@ textarea{min-height:70px;resize:vertical;}
 .toast.show{transform:translateX(-50%) translateY(0);}
 .toast.error{border-bottom:3px solid var(--red);} .toast.success{border-bottom:3px solid var(--yellow);}
 .hint{font-size:12px;color:var(--warm-gray);margin-top:6px;}
-@media(max-width:640px){ .grid2{grid-template-columns:1fr;} .row{grid-template-columns:56px 1fr;} .row .ractions{grid-column:1 / -1;} .modal{padding:28px 20px;} }
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px;}
+.kpi{background:var(--surface);border:1px solid var(--hairline);border-radius:2px;padding:20px;}
+.kpi.feat{background:var(--ink);color:var(--cream);border-color:var(--ink);}
+.kpi .lbl{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--warm-gray);}
+.kpi.feat .lbl{color:#B5AD9D;}
+.kpi .num{font-size:34px;font-weight:900;letter-spacing:-.01em;margin-top:6px;line-height:1.05;}
+.kpi .sub{font-size:12px;color:var(--warm-gray);margin-top:4px;}
+.ftable{width:100%;border-collapse:collapse;font-size:14px;margin-top:4px;}
+.ftable th{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--warm-gray);text-align:left;padding:10px 8px;border-bottom:1px solid var(--ink);}
+.ftable td{padding:10px 8px;border-bottom:1px solid var(--hairline);}
+@media(max-width:640px){
+  .kpis{grid-template-columns:1fr;} .grid2{grid-template-columns:1fr;} .row{grid-template-columns:56px 1fr;} .row .ractions{grid-column:1 / -1;} .modal{padding:28px 20px;} }
 </style>
 </head>
 <body>
@@ -114,7 +125,7 @@ textarea{min-height:70px;resize:vertical;}
     <div class="tabs">
       <button class="tab active" id="tabCartelera" onclick="showTab('cartelera')">Cartelera</button>
       <button class="tab" id="tabDulceria" onclick="showTab('dulceria')">Dulcería</button>
-      <button class="tab" disabled title="Próximamente">Finanzas · próximamente</button>
+      <button class="tab" id="tabFinanzas" onclick="showTab('finanzas')">Finanzas</button>
     </div>
 
     <div id="panelCartelera">
@@ -131,6 +142,14 @@ textarea{min-height:70px;resize:vertical;}
         <button class="btn btn-ink btn-sm" onclick="openProductForm()">+ Nuevo producto</button>
       </div>
       <div id="productsList"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+    <div id="panelFinanzas" style="display:none;">
+      <div class="panel-head">
+        <span class="label">Finanzas · acumulado</span>
+        <button class="btn btn-out btn-sm" onclick="loadStats()">Actualizar</button>
+      </div>
+      <div id="statsBody"><div class="empty"><div class="spinner"></div></div></div>
     </div>
   </div>
 </div>
@@ -208,10 +227,48 @@ async function loadAll(){
 
 // ===== TABS =====
 function showTab(t){
-  document.getElementById('panelCartelera').style.display = t==='cartelera'?'block':'none';
-  document.getElementById('panelDulceria').style.display = t==='dulceria'?'block':'none';
-  document.getElementById('tabCartelera').classList.toggle('active', t==='cartelera');
-  document.getElementById('tabDulceria').classList.toggle('active', t==='dulceria');
+  ['Cartelera','Dulceria','Finanzas'].forEach(x=>{
+    const tab = x.toLowerCase();
+    document.getElementById('panel'+x).style.display = (tab===t)?'block':'none';
+    document.getElementById('tab'+x).classList.toggle('active', tab===t);
+  });
+  if(t==='finanzas') loadStats();
+}
+
+// ===== FINANZAS =====
+function money(n){ return '$'+Math.round(n||0).toLocaleString('es-MX'); }
+function plur(n, sing, plu){ return n + ' ' + (n===1 ? sing : plu); }
+async function loadStats(){
+  const el=document.getElementById('statsBody');
+  el.innerHTML='<div class="empty"><div class="spinner"></div></div>';
+  try{
+    const s=await api({action:'stats', token});
+    if(s.status!=='ok'){ sessionExpired(); return; }
+    renderStats(s);
+  }catch(err){ el.innerHTML='<div class="empty">No se pudieron cargar las finanzas.</div>'; }
+}
+function renderStats(s){
+  const rows=(s.productos||[]).map(p=>`<tr>
+      <td>${esc(p.nombre)}</td>
+      <td style="text-align:center;">${p.vendidos}</td>
+      <td style="text-align:right;">${money(p.ingreso)}</td>
+      <td style="text-align:right;">${money(p.costo)}</td>
+      <td style="text-align:right;font-weight:800;">${money(p.ganancia)}</td>
+    </tr>`).join('');
+  document.getElementById('statsBody').innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">Ingresos totales</div><div class="num">${money(s.ingresosTotal)}</div></div>
+      <div class="kpi"><div class="lbl">Costo de lo vendido</div><div class="num">${money(s.costosTotal)}</div></div>
+      <div class="kpi feat"><div class="lbl">Ganancia</div><div class="num">${money(s.gananciaTotal)}</div></div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><div class="lbl">Cartelera</div><div class="num">${money(s.ventasCartelera)}</div><div class="sub">${plur(s.nReservas,'reserva confirmada','reservas confirmadas')}</div></div>
+      <div class="kpi"><div class="lbl">Dulcería</div><div class="num">${money(s.ventasTienda)}</div><div class="sub">${plur(s.nPedidos,'pedido','pedidos')} · ganancia ${money(s.gananciaTienda)}</div></div>
+      <div class="kpi"><div class="lbl">Experiencias (por confirmar)</div><div class="num">${money(s.experienciasTotal)}</div><div class="sub">${plur(s.nExperiencias,'solicitud','solicitudes')}</div></div>
+    </div>
+    ${rows?`<div class="panel-head" style="margin-top:8px;"><span class="label">Dulcería · detalle por producto</span></div>
+      <table class="ftable"><thead><tr><th>Producto</th><th style="text-align:center;">Vendidos</th><th style="text-align:right;">Ingreso</th><th style="text-align:right;">Costo</th><th style="text-align:right;">Ganancia</th></tr></thead><tbody>${rows}</tbody></table>`:''}
+    <p class="hint" style="margin-top:16px;">Cifras acumuladas. Cartelera = precio de la función × personas (solo reservas confirmadas). Ganancia de dulcería = ingreso − costo por producto. Las experiencias se muestran aparte hasta que las confirmes.</p>`;
 }
 
 // ===== CARTELERA =====
