@@ -192,7 +192,17 @@ function esc(s){ const d=document.createElement('div'); d.textContent = s==null?
 function val(id){ const el=document.getElementById(id); return el?el.value.trim():''; }
 let toastT=null;
 function toast(m,t=''){ const e=document.getElementById('toast'); e.textContent=m; e.className='toast show '+t; clearTimeout(toastT); toastT=setTimeout(()=>e.className='toast '+t,4000); }
-function getImageUrl(v){ if(!v||!v.trim())return''; v=v.trim(); return v.startsWith('http')?v:`https://drive.google.com/thumbnail?id=${v}&sz=w800`; }
+function getImageUrl(v){
+  if(!v||!v.trim())return'';
+  v=v.trim();
+  if(/drive\.google\.com|googleusercontent\.com\/d\//.test(v)){
+    const m=v.match(/[-\w]{25,}/);
+    if(m) return 'https://lh3.googleusercontent.com/d/'+m[0]+'=w1200';
+  }
+  if(v.startsWith('http')) return v;
+  return 'https://lh3.googleusercontent.com/d/'+v+'=w1200';
+}
+let uploading = false;
 
 // ===== AUTH =====
 async function doLogin(e){
@@ -330,6 +340,7 @@ function openEventForm(i){
   openOverlay('formModal');
 }
 async function saveEvent(){
+  if(uploading){ toast('Espera a que termine de subir la imagen.','error'); return; }
   const ev={ Titulo:val('f_Titulo'), Tipo:val('f_Tipo'), Descripcion:val('f_Descripcion'),
     Fecha:val('f_Fecha'), Hora_Inicio:val('f_Hora_Inicio'), Duracion_Min:val('f_Duracion_Min'),
     Precio_MXN:val('f_Precio_MXN'), Cupo_Max:val('f_Cupo_Max'), Estado:val('f_Estado'),
@@ -412,6 +423,7 @@ function openProductForm(i){
   openOverlay('formModal');
 }
 async function saveProduct(){
+  if(uploading){ toast('Espera a que termine de subir la imagen.','error'); return; }
   const p={ Nombre:val('p_Nombre'), Tag:val('p_Tag'), Nota:val('p_Nota'), Descripcion:val('p_Descripcion'),
     Precio:val('p_Precio'), Costo:val('p_Costo'), Stock:val('p_Stock'), Orden:val('p_Orden'),
     Activo:val('p_Activo'), Imagen_URL:val('p_Imagen_URL') };
@@ -437,9 +449,18 @@ async function deleteProduct(i){
 }
 
 // ===== IMAGEN =====
+function setUploading(on){
+  uploading = on;
+  ['f_save','p_save'].forEach(id=>{ const b=document.getElementById(id); if(!b) return;
+    b.disabled=on;
+    if(on){ b.dataset.txt=b.dataset.txt||b.textContent; b.textContent='⏳ Subiendo imagen…'; }
+    else if(b.dataset.txt){ b.textContent=b.dataset.txt; }
+  });
+}
 function uploadImg(fileId, targetId, prevId){
   const f=document.getElementById(fileId).files[0]; if(!f) return;
   if(f.size > 5*1024*1024){ toast('La imagen es muy pesada (máx 5 MB).','error'); return; }
+  setUploading(true);
   toast('Subiendo imagen…');
   const reader=new FileReader();
   reader.onload = async ()=>{
@@ -447,11 +468,12 @@ function uploadImg(fileId, targetId, prevId){
       const r=await api({action:'uploadImage', token, dataUrl:reader.result, filename:f.name});
       if(r.status==='ok'){
         document.getElementById(targetId).value=r.url;
-        const prev=document.getElementById(prevId); prev.src=r.url; prev.style.visibility='visible';
-        toast('Imagen subida.','success');
+        const prev=document.getElementById(prevId); prev.src=getImageUrl(r.url); prev.style.visibility='visible';
+        toast('Imagen subida ✓ — ahora dale Guardar.','success');
       } else if(/sesión/i.test(r.message||'')) sessionExpired();
       else toast(r.message||'No se pudo subir.','error');
     }catch(err){ toast('No se pudo subir la imagen.','error'); }
+    finally{ setUploading(false); }
   };
   reader.readAsDataURL(f);
 }
