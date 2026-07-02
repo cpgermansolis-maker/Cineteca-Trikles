@@ -1,0 +1,2178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trikles Conta — Contabilidad asistida por IA</title>
+
+<!--
+  ============================================================================
+  TRIKLES CONTA  —  Contabilidad asistida por IA para micro y pequeñas empresas
+  ============================================================================
+  Arquitectura:
+    - Frontend: este único archivo index.html (HTML + CSS + JS, sin build).
+    - Almacenamiento (por ahora): localStorage del navegador. En la Etapa 3
+      lo cambiaremos por Google Apps Script + Google Sheet, tocando SOLO el
+      objeto "DB" de abajo. El resto de la app no se entera del cambio.
+
+  Este archivo cubre:
+    - ETAPA 1: Gestión de empresas (crear, seleccionar, editar, eliminar).
+    - ETAPA 2: Catálogo de cuentas base del SAT, editable por empresa.
+
+  Cada empresa tiene su contabilidad independiente: su propio catálogo,
+  sus asientos y sus estados financieros.
+  ============================================================================
+-->
+
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- SheetJS: genera archivos de Excel (.xlsx) en el navegador -->
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<script>
+  // Colores de marca (paleta sobria, profesional)
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          marca:   '#1F4E5F', // verde petróleo (principal)
+          marca2:  '#2E8B8B', // acento
+          crema:   '#F7F5F0',
+          tinta:   '#1A1A1A',
+        }
+      }
+    }
+  }
+</script>
+<style>
+  body { background: #F7F5F0; }
+  /* Pequeñas ayudas visuales */
+  .tab-activo { background:#1F4E5F; color:#fff; }
+  .card { background:#fff; border:1px solid #e7e3da; border-radius:10px; }
+  input, select { outline:none; }
+  input:focus, select:focus { border-color:#2E8B8B; box-shadow:0 0 0 3px rgba(46,139,139,.15); }
+  ::-webkit-scrollbar { height:8px; width:8px; }
+  ::-webkit-scrollbar-thumb { background:#cdc7b8; border-radius:8px; }
+</style>
+</head>
+<body class="text-tinta">
+
+<!-- ========================= ENCABEZADO ========================= -->
+<header class="bg-marca text-white">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+    <div class="text-2xl font-bold tracking-tight">Trikles&nbsp;Conta</div>
+    <div class="text-xs opacity-80 hidden sm:block">Contabilidad asistida por IA</div>
+
+    <!-- Selector de empresa activa -->
+    <div class="ml-auto flex items-center gap-2">
+      <span class="text-xs opacity-80 hidden sm:inline">Empresa:</span>
+      <select id="selectorEmpresa"
+              class="text-tinta text-sm rounded-md px-2 py-1 border border-transparent"
+              onchange="App.cambiarEmpresa(this.value)"></select>
+      <button id="perfilBadge" onclick="Acciones.editarPerfil()" title="Mi perfil"
+              class="hidden text-white/90 hover:text-white text-xs rounded-md px-2 py-1 bg-white/10"></button>
+      <button onclick="Acciones.configurar()" title="Configuración (conexión con la IA)"
+              class="text-white/90 hover:text-white text-lg leading-none px-1">⚙</button>
+    </div>
+  </div>
+
+  <!-- Navegación de secciones -->
+  <nav class="max-w-6xl mx-auto px-2 flex gap-1 overflow-x-auto text-sm">
+    <!-- Los botones se generan en JS para poder marcar el activo -->
+  </nav>
+  <div id="nav" class="bg-marca/95"></div>
+</header>
+
+<!-- Aviso legal (visible siempre, requisito del proyecto) -->
+<div class="bg-amber-100 text-amber-900 text-xs">
+  <div class="max-w-6xl mx-auto px-4 py-2">
+    ⚠️ <strong>Aviso:</strong> Trikles Conta es una <strong>herramienta de apoyo</strong> y
+    <strong>no sustituye a un contador profesional</strong>. Las simulaciones de impuestos son
+    <strong>estimaciones</strong> que debes confirmar con tu contador y con el SAT.
+  </div>
+</div>
+
+<!-- Barra de alerta fiscal (se rellena en JS si hay obligaciones por vencer) -->
+<div id="alertaFiscal"></div>
+
+<!-- ========================= CONTENIDO ========================= -->
+<main id="app" class="max-w-6xl mx-auto px-4 py-6"></main>
+
+<!-- ========================= PIE ========================= -->
+<footer class="max-w-6xl mx-auto px-4 py-8 text-xs text-gray-500">
+  Trikles Conta · MVP · Los datos se guardan por ahora en este navegador (localStorage).
+</footer>
+
+<!-- ========================= MODAL GENÉRICO ========================= -->
+<div id="modalFondo" class="hidden fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+  <div class="card w-full max-w-lg max-h-[90vh] overflow-auto p-5">
+    <div class="flex items-center justify-between mb-4">
+      <h3 id="modalTitulo" class="text-lg font-semibold"></h3>
+      <button onclick="UI.cerrarModal()" class="text-gray-400 hover:text-gray-700 text-xl leading-none">&times;</button>
+    </div>
+    <div id="modalCuerpo"></div>
+  </div>
+</div>
+
+<!-- Aviso tipo "toast" -->
+<div id="toast" class="hidden fixed bottom-4 right-4 z-50 bg-tinta text-white text-sm px-4 py-2 rounded-lg shadow-lg"></div>
+
+<script>
+/* ============================================================================
+   1) CAPA DE DATOS  (DB)
+   ----------------------------------------------------------------------------
+   Aquí vive TODO el guardado/lectura. Hoy usa localStorage.
+   En la Etapa 3 reemplazaremos el cuerpo de estas funciones por llamadas a
+   Google Apps Script, y NADA más de la app tendrá que cambiar.
+   Estructura guardada:
+     tc_empresas  -> [ {id, nombre, regimen, rfc} ]
+     tc_cuentas_<idEmpresa> -> [ {id, codigo, nombre, tipo, naturaleza} ]
+     tc_empresaActiva -> id de la empresa seleccionada
+   ============================================================================ */
+// URL del backend de Apps Script ya desplegado (se puede sobrescribir en ⚙ Configuración).
+const BACKEND_URL_DEFAULT = 'https://script.google.com/macros/s/AKfycbwUY7CM2bEPuj-DTtPS4SFMsfyHrMCQ4VXBWIJ2DCibkOS6zzVgyce7-s__UFcnFrDL/exec';
+
+const DB = {
+  _leer(clave, porDefecto) {
+    try { const v = localStorage.getItem(clave); return v ? JSON.parse(v) : porDefecto; }
+    catch (e) { return porDefecto; }
+  },
+  _guardar(clave, valor) { localStorage.setItem(clave, JSON.stringify(valor)); },
+
+  // ---- Empresas ----
+  empresas()        { return this._leer('tc_empresas', []); },
+  guardarEmpresas(l){ this._guardar('tc_empresas', l); },
+
+  empresaActivaId()      { return this._leer('tc_empresaActiva', null); },
+  setEmpresaActiva(id)   { this._guardar('tc_empresaActiva', id); },
+
+  // ---- Cuentas (una lista por empresa) ----
+  cuentas(idEmpresa)         { return this._leer('tc_cuentas_' + idEmpresa, []); },
+  guardarCuentas(idEmpresa,l){ this._guardar('tc_cuentas_' + idEmpresa, l); },
+
+  // ---- URL del backend (Apps Script) para la IA ----
+  // URL de producción ya desplegada con clasp (proyecto "Trikles Conta Backend").
+  // No es secreta (el acceso es público); la llave de Claude vive escondida en el backend.
+  backendUrl()     { const u = this._leer('tc_backendUrl', ''); return u || BACKEND_URL_DEFAULT; },
+  setBackendUrl(u) { this._guardar('tc_backendUrl', (u || '').trim()); },
+
+  // ---- Asientos contables (una lista por empresa) ----
+  asientos(idEmpresa)          { return this._leer('tc_asientos_' + idEmpresa, []); },
+  guardarAsientos(idEmpresa,l) { this._guardar('tc_asientos_' + idEmpresa, l); },
+
+  // ---- Perfil de usuario (local) ----
+  // { nombre, tipo: 'estudiante' | 'empresa', modoAprendizaje: bool }
+  perfil()    { return this._leer('tc_perfil', null); },
+  setPerfil(p){ this._guardar('tc_perfil', p); },
+
+  // ---- Configuración de impuestos por empresa (tasas configurables) ----
+  impuestos(idEmpresa) {
+    let f = this._leer('tc_impuestos_' + idEmpresa, null);
+    if (!f) {
+      const emp = this.empresas().find(e => e.id === idEmpresa);
+      const resico = emp && /RESICO/i.test(emp.regimen || '');
+      f = { ivaTasa: 16, isrModo: resico ? 'ingresos' : 'utilidad', isrTasa: resico ? 1 : 30 };
+      this._guardar('tc_impuestos_' + idEmpresa, f);
+    }
+    return f;
+  },
+  guardarImpuestos(idEmpresa, f) { this._guardar('tc_impuestos_' + idEmpresa, f); },
+
+  // ---- Configuración fiscal por empresa (obligaciones/vencimientos) ----
+  fiscal(idEmpresa) {
+    let f = this._leer('tc_fiscal_' + idEmpresa, null);
+    if (!f) {
+      f = { tieneEmpleados: false, obligaciones: FISCAL_BASE.map(o => Object.assign({}, o)) };
+      this._guardar('tc_fiscal_' + idEmpresa, f);
+    }
+    return f;
+  },
+  guardarFiscal(idEmpresa, f) { this._guardar('tc_fiscal_' + idEmpresa, f); },
+
+  // Genera un id sencillo y único
+  nuevoId() { return 'id_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4); }
+};
+
+/* ============================================================================
+   1.5) CAPA DE IA  (IA)
+   ----------------------------------------------------------------------------
+   Habla con el backend de Google Apps Script, que a su vez habla con Claude.
+   La llave de Claude vive en el backend, NUNCA aquí.
+   Usamos Content-Type "text/plain" a propósito: así el navegador no exige
+   permisos CORS especiales a Apps Script (es el truco que ya usas en Cineteca).
+   ============================================================================ */
+const IA = {
+  async llamar(accion, datos) {
+    const url = DB.backendUrl();
+    if (!url) throw new Error('Primero configura la URL del backend con el botón ⚙ Configuración.');
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(Object.assign({ accion }, datos || {})),
+    });
+    const txt = await res.text();
+    let data;
+    try { data = JSON.parse(txt); }
+    catch (e) {
+      throw new Error('El backend no devolvió una respuesta válida. Revisa que la URL termine en /exec y que el acceso sea "Cualquier persona".\n\nRespuesta recibida:\n' + txt.slice(0, 300));
+    }
+    if (!data.ok) throw new Error(data.error || 'Error desconocido del backend.');
+    return data;
+  },
+
+  // Pide a Claude un asiento de partida doble a partir de una descripción.
+  proponerAsiento(descripcion, fecha) {
+    const cuentas = DB.cuentas(App.empresaActiva.id)
+      .map(c => ({ codigo: c.codigo, nombre: c.nombre, tipo: c.tipo }));
+    return this.llamar('proponerAsiento', { descripcion, fecha, cuentas });
+  },
+};
+
+/* ============================================================================
+   2) CATÁLOGO BASE DEL SAT
+   ----------------------------------------------------------------------------
+   Se carga automáticamente al crear una empresa. Es EDITABLE: el usuario puede
+   agregar, cambiar o borrar cuentas después.
+   tipo: activo | pasivo | capital | ingreso | gasto
+   naturaleza: deudora (activo y gasto) | acreedora (pasivo, capital, ingreso)
+   Los códigos siguen el "código agrupador del SAT" (versión simplificada MVP).
+   ============================================================================ */
+const CATALOGO_SAT_BASE = [
+  // ---------- ACTIVO (naturaleza deudora) ----------
+  { codigo:'101.01', nombre:'Caja / Efectivo',                 tipo:'activo',  naturaleza:'deudora'  },
+  { codigo:'102.01', nombre:'Bancos',                          tipo:'activo',  naturaleza:'deudora'  },
+  { codigo:'105.01', nombre:'Clientes',                        tipo:'activo',  naturaleza:'deudora'  },
+  { codigo:'107.01', nombre:'Deudores diversos',               tipo:'activo',  naturaleza:'deudora'  },
+  { codigo:'115.01', nombre:'Inventario / Almacén',            tipo:'activo',  naturaleza:'deudora'  },
+  { codigo:'118.01', nombre:'IVA acreditable pagado',          tipo:'activo',  naturaleza:'deudora'  },
+  { codigo:'119.01', nombre:'IVA acreditable pendiente de pago',tipo:'activo', naturaleza:'deudora'  },
+  { codigo:'151.01', nombre:'Mobiliario y equipo de oficina',  tipo:'activo',  naturaleza:'deudora'  },
+  { codigo:'153.01', nombre:'Equipo de cómputo',               tipo:'activo',  naturaleza:'deudora'  },
+  { codigo:'154.01', nombre:'Equipo de transporte',            tipo:'activo',  naturaleza:'deudora'  },
+
+  // ---------- PASIVO (naturaleza acreedora) ----------
+  { codigo:'201.01', nombre:'Proveedores',                     tipo:'pasivo',  naturaleza:'acreedora' },
+  { codigo:'205.01', nombre:'Acreedores diversos',             tipo:'pasivo',  naturaleza:'acreedora' },
+  { codigo:'206.01', nombre:'Documentos por pagar',            tipo:'pasivo',  naturaleza:'acreedora' },
+  { codigo:'208.01', nombre:'IVA trasladado cobrado',          tipo:'pasivo',  naturaleza:'acreedora' },
+  { codigo:'209.01', nombre:'IVA trasladado pendiente de cobro',tipo:'pasivo', naturaleza:'acreedora' },
+  { codigo:'216.01', nombre:'ISR por pagar',                   tipo:'pasivo',  naturaleza:'acreedora' },
+  { codigo:'216.02', nombre:'IVA por pagar',                   tipo:'pasivo',  naturaleza:'acreedora' },
+  { codigo:'216.03', nombre:'Retenciones por pagar',           tipo:'pasivo',  naturaleza:'acreedora' },
+
+  // ---------- CAPITAL (naturaleza acreedora) ----------
+  { codigo:'301.01', nombre:'Capital social',                  tipo:'capital', naturaleza:'acreedora' },
+  { codigo:'302.01', nombre:'Aportaciones del dueño',          tipo:'capital', naturaleza:'acreedora' },
+  { codigo:'305.01', nombre:'Resultado de ejercicios anteriores',tipo:'capital',naturaleza:'acreedora' },
+  { codigo:'306.01', nombre:'Resultado del ejercicio',         tipo:'capital', naturaleza:'acreedora' },
+
+  // ---------- INGRESOS (naturaleza acreedora) ----------
+  { codigo:'401.01', nombre:'Ventas',                          tipo:'ingreso', naturaleza:'acreedora' },
+  { codigo:'401.02', nombre:'Ingresos por servicios',          tipo:'ingreso', naturaleza:'acreedora' },
+  { codigo:'402.01', nombre:'Otros ingresos',                  tipo:'ingreso', naturaleza:'acreedora' },
+  { codigo:'403.01', nombre:'Productos financieros (intereses ganados)',tipo:'ingreso',naturaleza:'acreedora' },
+
+  // ---------- COSTOS Y GASTOS (naturaleza deudora) ----------
+  { codigo:'501.01', nombre:'Costo de ventas',                 tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'601.01', nombre:'Sueldos y salarios',              tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'601.02', nombre:'Renta',                           tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'601.03', nombre:'Servicios (luz, agua, internet)', tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'601.04', nombre:'Papelería y artículos de oficina',tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'601.05', nombre:'Publicidad y propaganda',         tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'601.06', nombre:'Mantenimiento y conservación',    tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'601.07', nombre:'Honorarios',                      tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'601.08', nombre:'Combustibles y lubricantes (gasolina)',tipo:'gasto',naturaleza:'deudora' },
+  { codigo:'601.09', nombre:'Viáticos y gastos de viaje',      tipo:'gasto',   naturaleza:'deudora'  },
+  { codigo:'602.01', nombre:'Gastos financieros (comisiones e intereses)',tipo:'gasto',naturaleza:'deudora' },
+];
+
+/* ============================================================================
+   OBLIGACIONES FISCALES BASE (editables)  —  ETAPA: ALERTAS FISCALES
+   ----------------------------------------------------------------------------
+   Fechas TÍPICAS en México. Son configurables porque la ley cambia.
+   periodicidad: mensual | bimestral | anual
+   diaLimite: día del mes en que vence (mensual/bimestral)
+   mesAnual/diaAnual: para las anuales
+   requiereEmpleados: solo aplica si la empresa tiene trabajadores
+   ============================================================================ */
+const FISCAL_BASE = [
+  { id:'iva',     nombre:'Declaración de IVA (definitiva)', entidad:'SAT',       periodicidad:'mensual',   diaLimite:17, requiereEmpleados:false, activo:true,  nota:'Pago mensual, a más tardar el día 17 del mes siguiente.' },
+  { id:'isr',     nombre:'Pago provisional de ISR',         entidad:'SAT',       periodicidad:'mensual',   diaLimite:17, requiereEmpleados:false, activo:true,  nota:'Mensual (incluye RESICO), a más tardar el día 17.' },
+  { id:'diot',    nombre:'DIOT (operaciones con terceros)', entidad:'SAT',       periodicidad:'mensual',   diaLimite:17, requiereEmpleados:false, activo:false, nota:'Informativa mensual. Verifica el día límite vigente.' },
+  { id:'retiene', nombre:'Entero de retenciones (ISR/IVA)', entidad:'SAT',       periodicidad:'mensual',   diaLimite:17, requiereEmpleados:true,  activo:false, nota:'Si retienes a empleados o a proveedores.' },
+  { id:'imss',    nombre:'Cuotas obrero-patronales IMSS',   entidad:'IMSS',      periodicidad:'mensual',   diaLimite:17, requiereEmpleados:true,  activo:false, nota:'Solo si tienes empleados.' },
+  { id:'rcv',     nombre:'IMSS RCV + INFONAVIT',            entidad:'INFONAVIT', periodicidad:'bimestral', diaLimite:17, requiereEmpleados:true,  activo:false, nota:'Retiro, Cesantía y Vejez + INFONAVIT, cada bimestre.' },
+  { id:'anualpm', nombre:'Declaración Anual (Persona Moral)',   entidad:'SAT',   periodicidad:'anual', mesAnual:3, diaAnual:31, requiereEmpleados:false, activo:false, nota:'A más tardar el 31 de marzo.' },
+  { id:'anualpf', nombre:'Declaración Anual (Persona Física)',  entidad:'SAT',   periodicidad:'anual', mesAnual:4, diaAnual:30, requiereEmpleados:false, activo:false, nota:'A más tardar el 30 de abril.' },
+];
+const ENTIDADES_FISCALES = ['SAT', 'IMSS', 'INFONAVIT', 'ISSSTE', 'Estatal', 'Otro'];
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// Regímenes fiscales frecuentes (para el alta de empresa)
+const REGIMENES = [
+  'RESICO (Régimen Simplificado de Confianza)',
+  'Actividad Empresarial y Profesional',
+  'Régimen General de Ley (Personas Morales)',
+  'Arrendamiento',
+  'Incorporación Fiscal',
+  'Otro',
+];
+
+/* ============================================================================
+   3) UTILIDADES DE INTERFAZ (UI)
+   ============================================================================ */
+const UI = {
+  toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.remove('hidden');
+    clearTimeout(this._tt);
+    this._tt = setTimeout(() => t.classList.add('hidden'), 2500);
+  },
+  abrirModal(titulo, htmlCuerpo) {
+    document.getElementById('modalTitulo').textContent = titulo;
+    document.getElementById('modalCuerpo').innerHTML = htmlCuerpo;
+    document.getElementById('modalFondo').classList.remove('hidden');
+  },
+  cerrarModal() { document.getElementById('modalFondo').classList.add('hidden'); },
+  // Escapa texto para evitar romper el HTML
+  esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); },
+  money(n) { return '$' + (Number(n)||0).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2}); },
+};
+
+/* ============================================================================
+   4) APLICACIÓN (App)  —  estado y navegación
+   ============================================================================ */
+const App = {
+  vista: 'empresas',       // sección actual
+  empresaActiva: null,     // objeto empresa seleccionado
+
+  // Secciones de la app. Las que aún no existen muestran "Próximamente".
+  secciones: [
+    { id:'empresas', etiqueta:'Empresas',   listo:true  },
+    { id:'catalogo', etiqueta:'Catálogo',   listo:true  },
+    { id:'capturar', etiqueta:'Capturar (IA)', listo:true  },
+    { id:'diario',   etiqueta:'Libro Diario', listo:true  },
+    { id:'mayor',    etiqueta:'Libro Mayor',   listo:true  },
+    { id:'balanza',  etiqueta:'Balanza',       listo:true  },
+    { id:'estados',  etiqueta:'Estados financieros', listo:true  },
+    { id:'fiscal',   etiqueta:'Alertas fiscales', listo:true  },
+    { id:'impuestos',etiqueta:'Impuestos',     listo:true  },
+    { id:'exportar', etiqueta:'Exportar',      listo:true  },
+  ],
+
+  iniciar() {
+    // Recuperar empresa activa (o la primera que exista)
+    const empresas = DB.empresas();
+    let idActiva = DB.empresaActivaId();
+    if (!empresas.find(e => e.id === idActiva)) idActiva = empresas[0]?.id || null;
+    this.empresaActiva = empresas.find(e => e.id === idActiva) || null;
+    DB.setEmpresaActiva(idActiva);
+
+    this.render();
+  },
+
+  cambiarEmpresa(id) {
+    DB.setEmpresaActiva(id);
+    this.empresaActiva = DB.empresas().find(e => e.id === id) || null;
+    Captura.reset();
+    this.render();
+    if (this.empresaActiva) UI.toast('Trabajando con: ' + this.empresaActiva.nombre);
+  },
+
+  irA(vista) { this.vista = vista; this.render(); },
+
+  // ---- Perfil de usuario ----
+  perfil() { return DB.perfil(); },
+  esEstudiante() { const p = DB.perfil(); return !!(p && p.tipo === 'estudiante'); },
+  modoAprendizaje() { const p = DB.perfil(); return !!(p && p.modoAprendizaje); },
+
+  // ---- Render principal ----
+  render() {
+    this.renderPerfilBadge();
+    this.renderSelectorEmpresa();
+    this.renderNav();
+    this.renderAlertaFiscal();
+    const main = document.getElementById('app');
+
+    // Primer uso: si no hay perfil, mostramos la bienvenida y no dejamos entrar aún.
+    if (!DB.perfil()) { main.innerHTML = Vistas.bienvenida(); return; }
+
+    // Si no hay empresas, forzamos la pantalla de empresas
+    if (DB.empresas().length === 0) this.vista = 'empresas';
+
+    const sec = this.secciones.find(s => s.id === this.vista);
+    if (!sec.listo) { main.innerHTML = Vistas.proximamente(sec.etiqueta); return; }
+
+    if (this.vista === 'empresas') main.innerHTML = Vistas.empresas();
+    else if (this.vista === 'catalogo') main.innerHTML = Vistas.catalogo();
+    else if (this.vista === 'capturar') { main.innerHTML = Vistas.capturar(); Captura.montar(); }
+    else if (this.vista === 'diario') main.innerHTML = Vistas.diario();
+    else if (this.vista === 'mayor') main.innerHTML = Vistas.mayor();
+    else if (this.vista === 'balanza') main.innerHTML = Vistas.balanza();
+    else if (this.vista === 'estados') main.innerHTML = Vistas.estados();
+    else if (this.vista === 'fiscal') main.innerHTML = Vistas.fiscal();
+    else if (this.vista === 'impuestos') main.innerHTML = Vistas.impuestos();
+    else if (this.vista === 'exportar') main.innerHTML = Vistas.exportar();
+  },
+
+  // Barra de alerta fiscal global: muestra la obligación más próxima si vence pronto (≤15 días).
+  renderAlertaFiscal() {
+    const cont = document.getElementById('alertaFiscal');
+    if (!cont) return;
+    if (!this.empresaActiva) { cont.innerHTML = ''; return; }
+    const prox = Fiscal.proximas(this.empresaActiva.id);
+    const urgente = prox.find(p => p.dias <= 15);
+    if (!urgente) { cont.innerHTML = ''; return; }
+    const u = Fiscal.urgencia(urgente.dias);
+    cont.innerHTML = `<div class="${u.clase} border-y text-sm">
+      <div class="max-w-6xl mx-auto px-4 py-2 flex items-center justify-between gap-3">
+        <span>🔔 <strong>${UI.esc(urgente.ob.nombre)}</strong> (${UI.esc(urgente.ob.entidad)}) vence <strong>${u.etq}</strong> — ${Fiscal.fmt(urgente.fecha)}</span>
+        <button onclick="App.irA('fiscal')" class="underline whitespace-nowrap">Ver todas</button>
+      </div>
+    </div>`;
+  },
+
+  renderPerfilBadge() {
+    const b = document.getElementById('perfilBadge');
+    const p = DB.perfil();
+    if (!b) return;
+    if (!p) { b.classList.add('hidden'); return; }
+    b.classList.remove('hidden');
+    const icono = p.tipo === 'estudiante' ? '🎓' : '🏢';
+    const modo = p.modoAprendizaje ? ' · modo aprendizaje' : '';
+    b.textContent = `${icono} ${p.nombre}${modo}`;
+  },
+
+  renderSelectorEmpresa() {
+    const sel = document.getElementById('selectorEmpresa');
+    const empresas = DB.empresas();
+    if (empresas.length === 0) {
+      sel.innerHTML = '<option>— sin empresas —</option>';
+      sel.disabled = true;
+      return;
+    }
+    sel.disabled = false;
+    sel.innerHTML = empresas.map(e =>
+      `<option value="${e.id}" ${e.id === this.empresaActiva?.id ? 'selected' : ''}>${UI.esc(e.nombre)}</option>`
+    ).join('');
+  },
+
+  renderNav() {
+    const nav = document.getElementById('nav');
+    const hayEmpresa = !!this.empresaActiva;
+    nav.innerHTML = `<div class="max-w-6xl mx-auto px-2 flex gap-1 overflow-x-auto text-sm">` +
+      this.secciones.map(s => {
+        // Sin empresa, solo "Empresas" está disponible
+        const bloqueado = !hayEmpresa && s.id !== 'empresas';
+        const activo = s.id === this.vista ? 'tab-activo' : 'text-white/80 hover:text-white';
+        return `<button
+                  onclick="${bloqueado ? '' : `App.irA('${s.id}')`}"
+                  class="px-3 py-2 rounded-t-md whitespace-nowrap ${activo} ${bloqueado ? 'opacity-40 cursor-not-allowed' : ''}"
+                  ${bloqueado ? 'title="Primero crea o selecciona una empresa"' : ''}>
+                  ${s.etiqueta}${s.listo ? '' : ' <span class="text-[10px] opacity-70">·pronto</span>'}
+                </button>`;
+      }).join('') + `</div>`;
+  },
+};
+
+/* ============================================================================
+   5) VISTAS  —  el HTML de cada sección
+   ============================================================================ */
+const Vistas = {
+
+  proximamente(nombre) {
+    return `<div class="card p-8 text-center text-gray-500">
+      <div class="text-4xl mb-2">🚧</div>
+      <div class="text-lg font-semibold text-tinta">${UI.esc(nombre)}</div>
+      <p class="mt-1 text-sm">Esta sección se construye en la siguiente etapa del MVP.</p>
+    </div>`;
+  },
+
+  // Consejo didáctico: solo aparece si el modo aprendizaje está activo (estudiantes).
+  tip(html) {
+    if (!App.modoAprendizaje()) return '';
+    return `<div class="border border-sky-200 bg-sky-50 text-sky-900 rounded-lg px-3 py-2 text-sm mb-4">
+      <span class="font-semibold">💡 Modo aprendizaje:</span> ${html}</div>`;
+  },
+
+  // -------------------- PERFIL: bienvenida (primer uso) --------------------
+  bienvenida() {
+    return `
+    <div class="max-w-xl mx-auto card p-6 mt-4 text-center">
+      <div class="text-2xl font-bold text-marca">Bienvenido a Trikles Conta</div>
+      <p class="text-gray-600 mb-5 text-sm">Contabilidad asistida por inteligencia artificial. Cuéntanos quién eres y adaptamos la app a ti.</p>
+      <div class="text-left mb-4">
+        <label class="text-sm font-medium">¿Cómo te llamas?</label>
+        <input id="bv_nombre" class="w-full border rounded-md px-3 py-2 mt-1" placeholder="Tu nombre" />
+      </div>
+      <p class="text-sm font-medium text-left mb-2">Soy…</p>
+      <div class="grid sm:grid-cols-2 gap-3">
+        <button onclick="Acciones.elegirPerfil('estudiante')" class="border-2 rounded-xl p-4 hover:border-marca2 transition text-left">
+          <div class="text-2xl">🎓</div>
+          <div class="font-semibold mt-1">Estudiante</div>
+          <div class="text-xs text-gray-500 mt-1">Estoy aprendiendo contaduría. Activa el <strong>modo aprendizaje</strong> con explicaciones y práctica sin miedo a equivocarme.</div>
+        </button>
+        <button onclick="Acciones.elegirPerfil('empresa')" class="border-2 rounded-xl p-4 hover:border-marca2 transition text-left">
+          <div class="text-2xl">🏢</div>
+          <div class="font-semibold mt-1">Empresa / Emprendedor</div>
+          <div class="text-xs text-gray-500 mt-1">Llevo la contabilidad de mi negocio y quiero que sea rápida y correcta.</div>
+        </button>
+      </div>
+      <p class="text-xs text-gray-400 mt-4">Podrás cambiar esto cuando quieras (botón de perfil, arriba). Más adelante añadiremos cuentas en línea con correo y contraseña.</p>
+    </div>`;
+  },
+
+  formPerfil() {
+    const p = DB.perfil() || { nombre:'', tipo:'empresa', modoAprendizaje:false };
+    return `
+      <form onsubmit="Acciones.guardarPerfil(event); return false;" class="space-y-3">
+        <div>
+          <label class="text-sm font-medium">Tu nombre</label>
+          <input id="pf_nombre" value="${UI.esc(p.nombre)}" class="w-full border rounded-md px-3 py-2 mt-1" required />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Tipo de usuario</label>
+          <select id="pf_tipo" class="w-full border rounded-md px-3 py-2 mt-1">
+            <option value="estudiante" ${p.tipo==='estudiante'?'selected':''}>🎓 Estudiante</option>
+            <option value="empresa" ${p.tipo==='empresa'?'selected':''}>🏢 Empresa / Emprendedor</option>
+          </select>
+        </div>
+        <label class="flex items-center gap-2 text-sm">
+          <input id="pf_modo" type="checkbox" ${p.modoAprendizaje?'checked':''} />
+          Activar <strong>modo aprendizaje</strong> (explicaciones didácticas en cada pantalla)
+        </label>
+        <div class="flex gap-2 justify-end pt-2">
+          <button type="button" onclick="UI.cerrarModal()" class="px-4 py-2 text-sm rounded-lg border">Cancelar</button>
+          <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-marca text-white font-semibold hover:bg-marca2">Guardar</button>
+        </div>
+      </form>`;
+  },
+
+  // -------------------- CONFIGURACIÓN (conexión con la IA) --------------------
+  formConfig() {
+    const url = DB.backendUrl();
+    return `
+      <div class="space-y-4 text-sm">
+        <p class="text-gray-600">
+          Aquí conectas la app con tu backend de <strong>Google Apps Script</strong>, que esconde tu
+          llave de Claude y hace las llamadas a la IA de forma segura.
+        </p>
+        <div>
+          <label class="font-medium">URL del backend (termina en <code>/exec</code>)</label>
+          <input id="cfg_url" value="${UI.esc(url)}" placeholder="https://script.google.com/macros/s/.../exec"
+                 class="w-full border rounded-md px-3 py-2 mt-1 font-mono text-xs" />
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="Acciones.guardarBackend()" class="px-3 py-2 rounded-lg bg-marca text-white font-semibold hover:bg-marca2">Guardar URL</button>
+          <button onclick="Acciones.probarPing()" class="px-3 py-2 rounded-lg border">1) Probar conexión</button>
+          <button onclick="Acciones.probarIA()" class="px-3 py-2 rounded-lg border">2) Probar IA</button>
+          <button onclick="Acciones.probarAsiento()" class="px-3 py-2 rounded-lg border">3) Asiento de ejemplo</button>
+        </div>
+        <div id="cfg_resultado" class="text-xs"></div>
+        <details class="text-xs text-gray-500">
+          <summary class="cursor-pointer">¿Cómo obtengo esta URL?</summary>
+          <ol class="list-decimal ml-5 mt-2 space-y-1">
+            <li>Abre <strong>script.google.com</strong> y crea un proyecto nuevo.</li>
+            <li>Pega el archivo <code>Codigo.gs</code> que está en tu carpeta Trikles Conta.</li>
+            <li>Configuración del proyecto → Propiedades del script → agrega <code>ANTHROPIC_API_KEY</code> con tu llave.</li>
+            <li>Implementar → Aplicación web → Ejecutar como "Yo", Acceso "Cualquier persona".</li>
+            <li>Copia la URL <code>/exec</code> y pégala arriba.</li>
+          </ol>
+        </details>
+      </div>`;
+  },
+
+  // -------------------- ETAPA 1: EMPRESAS --------------------
+  empresas() {
+    const empresas = DB.empresas();
+    let filas = empresas.map(e => {
+      const numCuentas = DB.cuentas(e.id).length;
+      const activa = e.id === App.empresaActiva?.id;
+      return `<tr class="border-t border-gray-100 ${activa ? 'bg-marca/5' : ''}">
+        <td class="px-3 py-3">
+          <div class="font-semibold">${UI.esc(e.nombre)} ${activa ? '<span class="text-[10px] text-marca2 font-bold">● ACTIVA</span>' : ''}</div>
+          <div class="text-xs text-gray-500">${UI.esc(e.regimen || 'Sin régimen')} ${e.rfc ? '· RFC: ' + UI.esc(e.rfc) : ''}</div>
+        </td>
+        <td class="px-3 py-3 text-center text-sm text-gray-600">${numCuentas} cuentas</td>
+        <td class="px-3 py-3 text-right whitespace-nowrap">
+          ${activa ? '' : `<button onclick="App.cambiarEmpresa('${e.id}')" class="text-marca2 text-sm font-semibold hover:underline mr-3">Seleccionar</button>`}
+          <button onclick="Acciones.editarEmpresa('${e.id}')" class="text-gray-500 text-sm hover:underline mr-3">Editar</button>
+          <button onclick="Acciones.eliminarEmpresa('${e.id}')" class="text-red-500 text-sm hover:underline">Eliminar</button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    if (empresas.length === 0) {
+      filas = `<tr><td colspan="3" class="px-3 py-10 text-center text-gray-500">
+        Aún no tienes empresas. Crea la primera para empezar.<br>
+        <span class="text-xs">Al crearla se cargará automáticamente un catálogo de cuentas base del SAT que podrás editar.</span>
+      </td></tr>`;
+    }
+
+    return `
+    <div class="flex items-center justify-between mb-4">
+      <div>
+        <h1 class="text-xl font-bold">Tus empresas</h1>
+        <p class="text-sm text-gray-500">Cada empresa tiene su propia contabilidad independiente.</p>
+      </div>
+      <button onclick="Acciones.nuevaEmpresa()" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">+ Nueva empresa</button>
+    </div>
+    ${App.esEstudiante() ? this.tip('Crea una <strong>empresa de práctica</strong> (por ejemplo con tu nombre o "Mi negocio de prueba"). Registra operaciones inventadas y observa cómo se arman solos el Diario, el Mayor, la Balanza y los estados financieros. Es tu laboratorio: equivócate todo lo que quieras.') : ''}
+    <div class="card overflow-hidden">
+      <table class="w-full text-sm">
+        <thead class="bg-crema text-gray-500 text-xs uppercase">
+          <tr><th class="px-3 py-2 text-left">Empresa</th><th class="px-3 py-2 text-center">Catálogo</th><th class="px-3 py-2 text-right">Acciones</th></tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>`;
+  },
+
+  // Formulario de alta/edición de empresa (se usa dentro del modal)
+  formEmpresa(e) {
+    const esNueva = !e;
+    e = e || { nombre:'', regimen:'', rfc:'' };
+    return `
+      <form onsubmit="Acciones.guardarEmpresa(event, '${esNueva ? '' : e.id}'); return false;" class="space-y-3">
+        <div>
+          <label class="text-sm font-medium">Nombre de la empresa *</label>
+          <input id="f_nombre" required value="${UI.esc(e.nombre)}" placeholder="Ej. Cineteca Trikles"
+                 class="w-full border rounded-md px-3 py-2 mt-1" />
+        </div>
+        <div>
+          <label class="text-sm font-medium">Régimen fiscal</label>
+          <select id="f_regimen" class="w-full border rounded-md px-3 py-2 mt-1">
+            <option value="">— Selecciona —</option>
+            ${REGIMENES.map(r => `<option ${r === e.regimen ? 'selected' : ''}>${r}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="text-sm font-medium">RFC (opcional)</label>
+          <input id="f_rfc" value="${UI.esc(e.rfc)}" placeholder="XAXX010101000" maxlength="13"
+                 class="w-full border rounded-md px-3 py-2 mt-1 uppercase" />
+        </div>
+        ${esNueva ? '<p class="text-xs text-gray-500">Al guardar, se cargará un catálogo de cuentas base del SAT que podrás modificar.</p>' : ''}
+        <div class="flex gap-2 justify-end pt-2">
+          <button type="button" onclick="UI.cerrarModal()" class="px-4 py-2 text-sm rounded-lg border">Cancelar</button>
+          <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-marca text-white font-semibold hover:bg-marca2">${esNueva ? 'Crear empresa' : 'Guardar cambios'}</button>
+        </div>
+      </form>`;
+  },
+
+  // -------------------- ETAPA 4: CAPTURA CON IA --------------------
+  capturar() {
+    if (!App.empresaActiva) return this.proximamente('Capturar (IA)');
+    Captura.asegurar();
+    const e = Captura.estado;
+    const numCuentas = DB.cuentas(App.empresaActiva.id).length;
+    return `
+    <div class="mb-4">
+      <h1 class="text-xl font-bold">Capturar operación</h1>
+      <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · describe la operación en tus palabras y la IA propone el asiento de partida doble.</p>
+    </div>
+    ${this.tip('Todo movimiento se registra en <strong>dos partes</strong> (partida doble): lo que <em>entra</em> va como <strong>cargo</strong> y lo que <em>sale</em> o se debe como <strong>abono</strong>. La suma de cargos <strong>siempre</strong> debe ser igual a la de abonos. Tranquilo: la app no te deja guardar si no cuadra, así que puedes practicar sin miedo.')}
+
+    <div class="card p-4 mb-4">
+      <label class="text-sm font-medium">¿Qué operación quieres registrar?</label>
+      <textarea id="cap_desc" rows="2" class="w-full border rounded-md px-3 py-2 mt-1 text-sm"
+                placeholder="Ej. Pagué $500 de gasolina en efectivo · Vendí boletos por $1,200 y me pagaron en efectivo · Compré papelería por $348 con tarjeta"></textarea>
+      <div class="flex flex-wrap items-end gap-3 mt-3">
+        <div>
+          <label class="text-xs text-gray-500 block">Fecha</label>
+          <input id="cap_fecha" type="date" value="${UI.esc(e.fecha)}" onchange="Captura.setFecha(this.value)"
+                 class="border rounded-md px-3 py-2 text-sm" />
+        </div>
+        <button id="cap_btnIA" onclick="Captura.pedirIA()"
+                class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">✨ Proponer asiento con IA</button>
+        <button onclick="Captura.manual()" class="px-4 py-2 rounded-lg text-sm border text-gray-600 hover:bg-gray-50">Crear manualmente</button>
+      </div>
+      <div id="cap_iaMsg"></div>
+    </div>
+
+    <div class="card p-4">
+      <div id="cap_editor"></div>
+    </div>`;
+  },
+
+  // -------------------- ETAPA 5: LIBRO DIARIO --------------------
+  diario() {
+    if (!App.empresaActiva) return this.proximamente('Libro Diario');
+
+    const cuentas = DB.cuentas(App.empresaActiva.id);
+    const mapaCuentas = {};
+    cuentas.forEach(c => { mapaCuentas[c.codigo] = c.nombre; });
+
+    // Ordenar por fecha y luego por orden de captura → folios consecutivos
+    const asientos = DB.asientos(App.empresaActiva.id).slice()
+      .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '') || (a.creado || '').localeCompare(b.creado || ''));
+
+    // Totales generales + detección de problemas (contabilidad "a prueba de errores")
+    let totCargos = 0, totAbonos = 0, problemas = 0;
+
+    const bloques = asientos.map((as, idx) => {
+      let c = 0, a = 0;
+      const filas = as.lineas.map(l => {
+        const nombre = mapaCuentas[l.cuenta];
+        const desconocida = nombre === undefined; // la cuenta ya no existe en el catálogo
+        if (desconocida) problemas++;
+        if (l.tipo === 'cargo') c += Number(l.monto) || 0; else a += Number(l.monto) || 0;
+        return `<tr>
+          <td class="py-1 pr-2 ${desconocida ? 'text-red-600' : ''}">
+            <span class="font-mono text-xs text-gray-500">${UI.esc(l.cuenta)}</span>
+            ${desconocida ? '⚠️ cuenta no está en el catálogo' : UI.esc(nombre)}
+          </td>
+          <td class="py-1 px-2 text-right">${l.tipo === 'cargo' ? UI.money(l.monto) : ''}</td>
+          <td class="py-1 px-2 text-right">${l.tipo === 'abono' ? UI.money(l.monto) : ''}</td>
+        </tr>`;
+      }).join('');
+
+      totCargos += c; totAbonos += a;
+      const cuadra = Math.round(c * 100) === Math.round(a * 100);
+      if (!cuadra) problemas++;
+
+      return `<div class="card overflow-hidden mb-3">
+        <div class="px-3 py-2 bg-crema flex items-center justify-between gap-2">
+          <div class="text-sm">
+            <span class="font-mono text-xs text-gray-500">Folio ${idx + 1}</span>
+            &nbsp;·&nbsp; <strong>${UI.esc(as.fecha)}</strong>
+            &nbsp;·&nbsp; ${UI.esc(as.descripcion)}
+          </div>
+          <button onclick="Acciones.eliminarAsiento('${as.id}')" class="text-red-500 text-xs hover:underline whitespace-nowrap">Eliminar</button>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="text-[10px] uppercase text-gray-400">
+            <tr><th class="text-left px-3 py-1">Cuenta</th><th class="text-right px-2 py-1 w-32">Cargo</th><th class="text-right px-2 py-1 w-32">Abono</th></tr>
+          </thead>
+          <tbody>${filas}</tbody>
+          <tfoot class="border-t border-gray-200 font-semibold">
+            <tr>
+              <td class="px-3 py-1 text-right text-xs text-gray-500">Sumas iguales ${cuadra ? '✓' : '<span class="text-red-600">✗ descuadre</span>'}</td>
+              <td class="px-2 py-1 text-right">${UI.money(c)}</td>
+              <td class="px-2 py-1 text-right">${UI.money(a)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+    }).join('');
+
+    if (asientos.length === 0) {
+      return `
+      <div class="mb-4"><h1 class="text-xl font-bold">Libro Diario</h1>
+        <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong></p></div>
+      <div class="card p-10 text-center text-gray-500">
+        <div class="text-4xl mb-2">📖</div>
+        Aún no has registrado asientos.
+        <div class="mt-3"><button onclick="App.irA('capturar')" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">Ir a Capturar (IA)</button></div>
+      </div>`;
+    }
+
+    const cuadraGlobal = Math.round(totCargos * 100) === Math.round(totAbonos * 100);
+    const revision = problemas === 0
+      ? `<div class="border border-green-200 bg-green-50 text-green-800 rounded-lg px-3 py-2 text-sm mb-4">✅ Revisión de integridad: <strong>todo en orden</strong>. Todos los asientos cuadran y usan cuentas válidas del catálogo.</div>`
+      : `<div class="border border-red-200 bg-red-50 text-red-800 rounded-lg px-3 py-2 text-sm mb-4">⚠️ Revisión de integridad: se detectaron <strong>${problemas}</strong> problema(s) (asientos descuadrados o cuentas fuera del catálogo). Están marcados en rojo abajo.</div>`;
+
+    return `
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <div>
+        <h1 class="text-xl font-bold">Libro Diario</h1>
+        <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · ${asientos.length} asiento(s), en orden por fecha</p>
+      </div>
+      <button onclick="App.irA('capturar')" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">+ Nuevo asiento</button>
+    </div>
+    ${revision}
+    ${bloques}
+    <div class="card p-3 flex flex-wrap items-center justify-between gap-3 text-sm">
+      <span class="text-gray-500">Totales del Diario</span>
+      <span>Cargos: <strong>${UI.money(totCargos)}</strong> &nbsp;·&nbsp; Abonos: <strong>${UI.money(totAbonos)}</strong> &nbsp;·&nbsp;
+        ${cuadraGlobal ? '<span class="text-green-700 font-bold">✓ Cuadra</span>' : '<span class="text-red-700 font-bold">✗ No cuadra</span>'}</span>
+    </div>`;
+  },
+
+  // -------------------- ETAPA 6: LIBRO MAYOR --------------------
+  mayor() {
+    if (!App.empresaActiva) return this.proximamente('Libro Mayor');
+
+    const cuentas = DB.cuentas(App.empresaActiva.id);
+    const info = {};
+    cuentas.forEach(c => { info[c.codigo] = c; });
+
+    const asientos = DB.asientos(App.empresaActiva.id).slice()
+      .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '') || (a.creado || '').localeCompare(b.creado || ''));
+
+    if (asientos.length === 0) {
+      return `
+      <div class="mb-4"><h1 class="text-xl font-bold">Libro Mayor</h1>
+        <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong></p></div>
+      <div class="card p-10 text-center text-gray-500">
+        <div class="text-4xl mb-2">📚</div>
+        No hay movimientos todavía. El Libro Mayor se llena solo con lo que captures en el Diario.
+        <div class="mt-3"><button onclick="App.irA('capturar')" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">Ir a Capturar (IA)</button></div>
+      </div>`;
+    }
+
+    // Reunir movimientos por cuenta (el folio coincide con el del Diario)
+    const movs = {};
+    asientos.forEach((as, idx) => {
+      as.lineas.forEach(l => {
+        (movs[l.cuenta] = movs[l.cuenta] || []).push({
+          fecha: as.fecha, folio: idx + 1, desc: as.descripcion,
+          tipo: l.tipo, monto: Number(l.monto) || 0
+        });
+      });
+    });
+
+    const codigos = Object.keys(movs).sort((a, b) => a.localeCompare(b));
+
+    const bloques = codigos.map(cod => {
+      const c = info[cod];
+      const nombre = c ? c.nombre : '⚠️ cuenta fuera del catálogo';
+      const nat = c ? c.naturaleza : 'deudora';
+      let saldo = 0, tc = 0, ta = 0;
+
+      const filas = movs[cod].map(m => {
+        if (m.tipo === 'cargo') tc += m.monto; else ta += m.monto;
+        // El saldo crece por el lado "normal" de la cuenta
+        saldo += (nat === 'deudora')
+          ? (m.tipo === 'cargo' ? m.monto : -m.monto)
+          : (m.tipo === 'abono' ? m.monto : -m.monto);
+        return `<tr class="border-t border-gray-100">
+          <td class="px-2 py-1 whitespace-nowrap">${UI.esc(m.fecha)}</td>
+          <td class="px-2 py-1 text-xs text-gray-500">F${m.folio} · ${UI.esc(m.desc)}</td>
+          <td class="px-2 py-1 text-right">${m.tipo === 'cargo' ? UI.money(m.monto) : ''}</td>
+          <td class="px-2 py-1 text-right">${m.tipo === 'abono' ? UI.money(m.monto) : ''}</td>
+          <td class="px-2 py-1 text-right font-medium">${UI.money(saldo)}</td>
+        </tr>`;
+      }).join('');
+
+      const lado = saldo >= 0
+        ? (nat === 'deudora' ? 'deudor' : 'acreedor')
+        : (nat === 'deudora' ? 'acreedor' : 'deudor');
+
+      return `<div class="card overflow-hidden mb-3">
+        <div class="px-3 py-2 bg-crema flex items-center justify-between">
+          <span class="font-semibold text-sm"><span class="font-mono text-xs text-gray-500">${UI.esc(cod)}</span> · ${UI.esc(nombre)}</span>
+          <span class="text-xs text-gray-400">naturaleza ${nat}</span>
+        </div>
+        <table class="w-full text-sm">
+          <thead class="text-[10px] uppercase text-gray-400">
+            <tr><th class="text-left px-2 py-1">Fecha</th><th class="text-left px-2 py-1">Concepto</th>
+                <th class="text-right px-2 py-1 w-28">Cargo</th><th class="text-right px-2 py-1 w-28">Abono</th><th class="text-right px-2 py-1 w-28">Saldo</th></tr>
+          </thead>
+          <tbody>${filas}</tbody>
+          <tfoot class="border-t border-gray-200 font-semibold">
+            <tr>
+              <td colspan="2" class="px-2 py-1 text-right text-xs text-gray-500">Sumas y saldo</td>
+              <td class="px-2 py-1 text-right">${UI.money(tc)}</td>
+              <td class="px-2 py-1 text-right">${UI.money(ta)}</td>
+              <td class="px-2 py-1 text-right">${UI.money(Math.abs(saldo))} <span class="text-[10px] text-gray-400">${lado}</span></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="mb-3">
+      <h1 class="text-xl font-bold">Libro Mayor</h1>
+      <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · ${codigos.length} cuenta(s) con movimiento</p>
+      <p class="text-xs text-gray-400 mt-1">Cada cuenta muestra sus movimientos y su <strong>saldo</strong>. El saldo crece por el lado normal de la cuenta (las de naturaleza deudora con cargos; las acreedoras con abonos).</p>
+    </div>
+    ${bloques}`;
+  },
+
+  // -------------------- ETAPA 7: BALANZA DE COMPROBACIÓN --------------------
+  balanza() {
+    if (!App.empresaActiva) return this.proximamente('Balanza');
+
+    const cuentas = DB.cuentas(App.empresaActiva.id);
+    const info = {};
+    cuentas.forEach(c => { info[c.codigo] = c; });
+    const asientos = DB.asientos(App.empresaActiva.id);
+
+    if (asientos.length === 0) {
+      return `
+      <div class="mb-4"><h1 class="text-xl font-bold">Balanza de comprobación</h1>
+        <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong></p></div>
+      <div class="card p-10 text-center text-gray-500"><div class="text-4xl mb-2">⚖️</div>
+        No hay movimientos todavía.</div>`;
+    }
+
+    // Acumular sumas (cargos/abonos) por cuenta
+    const acum = {};
+    asientos.forEach(as => {
+      as.lineas.forEach(l => {
+        const a = acum[l.cuenta] = acum[l.cuenta] || { cargos: 0, abonos: 0 };
+        if (l.tipo === 'cargo') a.cargos += Number(l.monto) || 0;
+        else a.abonos += Number(l.monto) || 0;
+      });
+    });
+
+    const codigos = Object.keys(acum).sort((a, b) => a.localeCompare(b));
+    let sumCargos = 0, sumAbonos = 0, sumDeudor = 0, sumAcreedor = 0;
+
+    const filas = codigos.map(cod => {
+      const c = info[cod];
+      const nombre = c ? c.nombre : '⚠️ fuera del catálogo';
+      const { cargos, abonos } = acum[cod];
+      const neto = Math.round((cargos - abonos) * 100) / 100;
+      const deudor = neto > 0 ? neto : 0;
+      const acreedor = neto < 0 ? -neto : 0;
+      sumCargos += cargos; sumAbonos += abonos; sumDeudor += deudor; sumAcreedor += acreedor;
+      return `<tr class="border-t border-gray-100">
+        <td class="px-2 py-1"><span class="font-mono text-xs text-gray-500">${UI.esc(cod)}</span> ${UI.esc(nombre)}</td>
+        <td class="px-2 py-1 text-right">${UI.money(cargos)}</td>
+        <td class="px-2 py-1 text-right">${UI.money(abonos)}</td>
+        <td class="px-2 py-1 text-right">${deudor ? UI.money(deudor) : ''}</td>
+        <td class="px-2 py-1 text-right">${acreedor ? UI.money(acreedor) : ''}</td>
+      </tr>`;
+    }).join('');
+
+    const sumasOK = Math.round(sumCargos * 100) === Math.round(sumAbonos * 100);
+    const saldosOK = Math.round(sumDeudor * 100) === Math.round(sumAcreedor * 100);
+    const todoOK = sumasOK && saldosOK;
+
+    const aviso = todoOK
+      ? `<div class="border border-green-200 bg-green-50 text-green-800 rounded-lg px-3 py-2 text-sm mb-3">✅ La balanza cuadra: las sumas de cargos y abonos son iguales, y los saldos deudores igualan a los acreedores. La contabilidad está balanceada.</div>`
+      : `<div class="border border-red-200 bg-red-50 text-red-800 rounded-lg px-3 py-2 text-sm mb-3">⚠️ La balanza NO cuadra. Revisa el Libro Diario en busca de un asiento con problema.</div>`;
+
+    return `
+    <div class="mb-3">
+      <h1 class="text-xl font-bold">Balanza de comprobación</h1>
+      <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · ${codigos.length} cuenta(s)</p>
+    </div>
+    ${aviso}
+    <div class="card overflow-x-auto">
+      <table class="w-full text-sm min-w-[560px]">
+        <thead class="bg-crema text-[10px] uppercase text-gray-500">
+          <tr>
+            <th class="px-2 py-2 text-left">Cuenta</th>
+            <th class="px-2 py-2 text-right" colspan="1">Sumas cargos</th>
+            <th class="px-2 py-2 text-right">Sumas abonos</th>
+            <th class="px-2 py-2 text-right">Saldo deudor</th>
+            <th class="px-2 py-2 text-right">Saldo acreedor</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+        <tfoot class="border-t-2 border-gray-300 font-bold bg-crema/50">
+          <tr>
+            <td class="px-2 py-2 text-right">TOTALES</td>
+            <td class="px-2 py-2 text-right ${sumasOK ? '' : 'text-red-600'}">${UI.money(sumCargos)}</td>
+            <td class="px-2 py-2 text-right ${sumasOK ? '' : 'text-red-600'}">${UI.money(sumAbonos)}</td>
+            <td class="px-2 py-2 text-right ${saldosOK ? '' : 'text-red-600'}">${UI.money(sumDeudor)}</td>
+            <td class="px-2 py-2 text-right ${saldosOK ? '' : 'text-red-600'}">${UI.money(sumAcreedor)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+    <p class="text-xs text-gray-400 mt-2">Regla: <strong>Sumas cargos = Sumas abonos</strong> y <strong>Saldos deudores = Saldos acreedores</strong>. Si algo no cuadra, hay un error de captura.</p>`;
+  },
+
+  // -------------------- ETAPA 10: EXPORTAR --------------------
+  exportar() {
+    if (!App.empresaActiva) return this.proximamente('Exportar');
+    const n = DB.asientos(App.empresaActiva.id).length;
+    return `
+    <div class="mb-3">
+      <h1 class="text-xl font-bold">Exportar</h1>
+      <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · descarga tus reportes</p>
+    </div>
+    ${this.tip('El <strong>Excel</strong> te sirve para seguir trabajando los números o entregárselos a tu contador; el <strong>PDF</strong> es ideal para imprimir o archivar.')}
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div class="card p-5 text-center">
+        <div class="text-4xl mb-2">📊</div>
+        <h2 class="font-semibold">Excel (.xlsx)</h2>
+        <p class="text-sm text-gray-500 mb-4">Un archivo con 4 hojas: Diario, Balanza, Estado de Resultados y Balance General.</p>
+        <button onclick="Export.excel()" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">Descargar Excel</button>
+      </div>
+      <div class="card p-5 text-center">
+        <div class="text-4xl mb-2">📄</div>
+        <h2 class="font-semibold">PDF (imprimir)</h2>
+        <p class="text-sm text-gray-500 mb-4">Abre una vista lista para imprimir. En el diálogo elige <strong>“Guardar como PDF”</strong>.</p>
+        <button onclick="Export.pdf()" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">Generar PDF</button>
+      </div>
+    </div>
+    <p class="text-xs text-gray-400 mt-4">${n === 0 ? 'Aún no tienes asientos: captura algunos primero.' : `Se exportarán ${n} asiento(s) de esta empresa.`}</p>`;
+  },
+
+  // -------------------- ETAPA 9: SIMULACIÓN DE IMPUESTOS --------------------
+  impuestos() {
+    if (!App.empresaActiva) return this.proximamente('Impuestos');
+    const cfg = DB.impuestos(App.empresaActiva.id);
+    const cuentas = DB.cuentas(App.empresaActiva.id);
+    const info = {};
+    cuentas.forEach(c => { info[c.codigo] = c; });
+    const asientos = DB.asientos(App.empresaActiva.id);
+
+    // Acumular saldos por cuenta
+    const acum = {};
+    asientos.forEach(as => as.lineas.forEach(l => {
+      const a = acum[l.cuenta] = acum[l.cuenta] || { cargos: 0, abonos: 0 };
+      if (l.tipo === 'cargo') a.cargos += Number(l.monto) || 0; else a.abonos += Number(l.monto) || 0;
+    }));
+    const saldoDe = (cod) => {
+      const c = info[cod], a = acum[cod];
+      if (!a) return 0;
+      const deudora = c && (c.tipo === 'activo' || c.tipo === 'gasto');
+      return deudora ? (a.cargos - a.abonos) : (a.abonos - a.cargos);
+    };
+
+    // Reunir cifras: ingresos, gastos e IVA (detectando las cuentas de IVA por nombre/código)
+    let ingresos = 0, gastos = 0, ivaTras = 0, ivaAcred = 0;
+    const usadasTras = [], usadasAcred = [];
+    cuentas.forEach(c => {
+      if (!acum[c.codigo]) return;
+      const s = saldoDe(c.codigo);
+      if (c.tipo === 'ingreso') ingresos += s;
+      if (c.tipo === 'gasto') gastos += s;
+      const nom = (c.nombre || '').toLowerCase();
+      if (nom.indexOf('iva') !== -1 && (nom.indexOf('traslad') !== -1 || /^20[89]/.test(c.codigo))) { ivaTras += s; usadasTras.push(c.codigo); }
+      if (nom.indexOf('iva') !== -1 && (nom.indexOf('acredit') !== -1 || /^11[89]/.test(c.codigo))) { ivaAcred += s; usadasAcred.push(c.codigo); }
+    });
+
+    const utilidad = ingresos - gastos;
+    const ivaNeto = ivaTras - ivaAcred;                 // >0 a cargo, <0 a favor
+    const baseISR = cfg.isrModo === 'ingresos' ? ingresos : Math.max(0, utilidad);
+    const isr = baseISR * (cfg.isrTasa / 100);
+
+    const fila = (etq, val, fuerte) => `<tr class="${fuerte ? 'border-t-2 border-marca font-bold' : 'border-t border-gray-100'}">
+      <td class="py-1.5 pl-2">${etq}</td><td class="py-1.5 pr-2 text-right">${UI.money(val)}</td></tr>`;
+
+    return `
+    <div class="mb-3">
+      <h1 class="text-xl font-bold">Simulación de impuestos</h1>
+      <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · estimación de IVA e ISR con tus datos</p>
+    </div>
+
+    <div class="border border-amber-200 bg-amber-50 text-amber-900 rounded-lg px-3 py-2 text-sm mb-4">
+      ⚠️ <strong>Estas cifras son una estimación</strong>, no un cálculo oficial. Confírmalas siempre con tu contador y con el SAT antes de declarar o pagar.
+    </div>
+    ${this.tip('El <strong>IVA</strong> que pagas al SAT es el que cobraste (trasladado) menos el que pagaste en tus compras (acreditable). El <strong>ISR</strong> se calcula sobre tus ingresos (en RESICO) o sobre tu utilidad. Ajusta las tasas abajo según tu régimen.')}
+
+    <div class="grid lg:grid-cols-2 gap-4">
+      <!-- IVA -->
+      <div class="card p-4">
+        <h2 class="font-bold text-marca mb-2">IVA (Impuesto al Valor Agregado)</h2>
+        <table class="w-full text-sm"><tbody>
+          ${fila('IVA trasladado (que cobraste)', ivaTras)}
+          ${fila('(−) IVA acreditable (que pagaste)', ivaAcred)}
+          <tr class="border-t-2 border-marca font-bold ${ivaNeto >= 0 ? 'text-red-700' : 'text-green-700'}">
+            <td class="py-2 pl-2">= IVA ${ivaNeto >= 0 ? 'a cargo (a pagar)' : 'a favor'}</td>
+            <td class="py-2 pr-2 text-right">${UI.money(Math.abs(ivaNeto))}</td>
+          </tr>
+        </tbody></table>
+        <p class="text-xs text-gray-400 mt-2">${(usadasTras.length || usadasAcred.length)
+          ? 'Calculado con tus cuentas de IVA (' + [...usadasTras, ...usadasAcred].join(', ') + ').'
+          : 'Aún no tienes movimientos en cuentas de IVA, así que sale en cero. Usa cuentas como “IVA trasladado cobrado” y “IVA acreditable pagado” al capturar.'}</p>
+      </div>
+
+      <!-- ISR -->
+      <div class="card p-4">
+        <h2 class="font-bold text-marca mb-2">ISR (Impuesto Sobre la Renta)</h2>
+        <table class="w-full text-sm"><tbody>
+          ${fila('Ingresos del período', ingresos)}
+          ${fila('(−) Gastos deducibles', gastos)}
+          ${fila('= Utilidad', utilidad, true)}
+          <tr class="border-t border-gray-100"><td class="py-1.5 pl-2 text-gray-500">Base del ISR (${cfg.isrModo === 'ingresos' ? 'sobre ingresos' : 'sobre utilidad'})</td><td class="py-1.5 pr-2 text-right">${UI.money(baseISR)}</td></tr>
+          <tr class="border-t-2 border-marca font-bold text-red-700">
+            <td class="py-2 pl-2">= ISR estimado (${cfg.isrTasa}%)</td>
+            <td class="py-2 pr-2 text-right">${UI.money(isr)}</td>
+          </tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <!-- Configuración de tasas -->
+    <div class="card p-4 mt-4">
+      <h2 class="font-semibold text-sm mb-3">⚙️ Configuración de tasas (editable — la ley cambia)</h2>
+      <div class="flex flex-wrap gap-4 items-end">
+        <div>
+          <label class="text-xs text-gray-500 block">Tasa de IVA (%)</label>
+          <input type="number" step="0.01" value="${cfg.ivaTasa}" onchange="Impuestos.setCampo('ivaTasa',this.value)" class="border rounded-md px-2 py-1.5 w-24 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 block">ISR se calcula…</label>
+          <select onchange="Impuestos.setCampo('isrModo',this.value)" class="border rounded-md px-2 py-1.5 text-sm">
+            <option value="ingresos" ${cfg.isrModo === 'ingresos' ? 'selected' : ''}>Sobre ingresos (RESICO)</option>
+            <option value="utilidad" ${cfg.isrModo === 'utilidad' ? 'selected' : ''}>Sobre utilidad</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 block">Tasa de ISR (%)</label>
+          <input type="number" step="0.01" value="${cfg.isrTasa}" onchange="Impuestos.setCampo('isrTasa',this.value)" class="border rounded-md px-2 py-1.5 w-24 text-sm" />
+        </div>
+        <div class="flex gap-2">
+          <button onclick="Impuestos.preset('resico')" class="px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-50">RESICO</button>
+          <button onclick="Impuestos.preset('pf')" class="px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-50">Act. Empresarial</button>
+          <button onclick="Impuestos.preset('pm')" class="px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-50">Persona Moral</button>
+        </div>
+      </div>
+      <p class="text-xs text-gray-400 mt-3">Nota: el ISR real suele ser <strong>progresivo</strong> (por tablas del SAT) y admite más deducciones; esta simulación usa una tasa fija plana como aproximación rápida.</p>
+    </div>`;
+  },
+
+  // -------------------- ALERTAS FISCALES --------------------
+  fiscal() {
+    if (!App.empresaActiva) return this.proximamente('Alertas fiscales');
+    const cfg = DB.fiscal(App.empresaActiva.id);
+    const proximas = Fiscal.proximas(App.empresaActiva.id);
+
+    // Agenda: próximas obligaciones activas ordenadas por urgencia
+    const agenda = proximas.length
+      ? proximas.map(p => {
+          const u = Fiscal.urgencia(p.dias);
+          return `<div class="flex items-center justify-between gap-3 border ${u.clase} rounded-lg px-3 py-2 mb-2">
+            <div class="text-sm">
+              <strong>${UI.esc(p.ob.nombre)}</strong> <span class="text-xs opacity-70">· ${UI.esc(p.ob.entidad)}</span>
+              <div class="text-xs opacity-80">${Fiscal.fmt(p.fecha)}</div>
+            </div>
+            <div class="text-sm font-bold whitespace-nowrap">${u.etq}</div>
+          </div>`;
+        }).join('')
+      : `<div class="text-sm text-gray-400 py-3">No hay obligaciones activas. Actívalas en la tabla de abajo.</div>`;
+
+    // Tabla de configuración (todo editable)
+    const filas = cfg.obligaciones.map(o => {
+      const aplica = !o.requiereEmpleados || cfg.tieneEmpleados;
+      const fechaCol = o.periodicidad === 'anual'
+        ? `<select onchange="Fiscal.setCampo('${o.id}','mesAnual',this.value)" class="border rounded px-1 py-1 text-xs">
+             ${MESES_ES.map((m, i) => `<option value="${i + 1}" ${o.mesAnual === i + 1 ? 'selected' : ''}>${m}</option>`).join('')}
+           </select>
+           <input type="number" min="1" max="31" value="${o.diaAnual || 1}" onchange="Fiscal.setCampo('${o.id}','diaAnual',this.value)" class="border rounded px-1 py-1 w-14 text-xs" />`
+        : `día <input type="number" min="1" max="31" value="${o.diaLimite || 17}" onchange="Fiscal.setCampo('${o.id}','diaLimite',this.value)" class="border rounded px-1 py-1 w-14 text-xs" />`;
+
+      return `<tr class="border-t border-gray-100 ${aplica ? '' : 'opacity-50'}">
+        <td class="px-2 py-2 text-center"><input type="checkbox" ${o.activo ? 'checked' : ''} onchange="Fiscal.setCampo('${o.id}','activo',this.checked)" /></td>
+        <td class="px-2 py-2">
+          <input value="${UI.esc(o.nombre)}" onchange="Fiscal.setCampo('${o.id}','nombre',this.value)" class="w-full border rounded px-2 py-1 text-sm" />
+          ${o.requiereEmpleados ? '<div class="text-[10px] text-gray-400">Solo si tienes empleados</div>' : ''}
+        </td>
+        <td class="px-2 py-2">
+          <select onchange="Fiscal.setCampo('${o.id}','entidad',this.value)" class="border rounded px-1 py-1 text-xs">
+            ${ENTIDADES_FISCALES.map(e => `<option ${o.entidad === e ? 'selected' : ''}>${e}</option>`).join('')}
+          </select>
+        </td>
+        <td class="px-2 py-2">
+          <select onchange="Fiscal.setCampo('${o.id}','periodicidad',this.value)" class="border rounded px-1 py-1 text-xs">
+            <option value="mensual"   ${o.periodicidad === 'mensual' ? 'selected' : ''}>Mensual</option>
+            <option value="bimestral" ${o.periodicidad === 'bimestral' ? 'selected' : ''}>Bimestral</option>
+            <option value="anual"     ${o.periodicidad === 'anual' ? 'selected' : ''}>Anual</option>
+          </select>
+        </td>
+        <td class="px-2 py-2 whitespace-nowrap text-xs">${fechaCol}</td>
+        <td class="px-2 py-2 text-center"><button onclick="Fiscal.quitar('${o.id}')" class="text-red-400 hover:text-red-600" title="Quitar">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    return `
+    <div class="mb-3">
+      <h1 class="text-xl font-bold">Alertas fiscales</h1>
+      <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · calendario de obligaciones ante el SAT, IMSS, INFONAVIT…</p>
+    </div>
+    ${this.tip('Aquí ves <strong>qué días te toca declarar o pagar</strong>. Las fechas son configurables porque la ley cambia. El semáforo te avisa: 🔴 urgente (≤3 días), 🟡 pronto (≤10), 🟢 con tiempo. Actívalas o edítalas según tu régimen.')}
+
+    <div class="card p-4 mb-4">
+      <h2 class="font-semibold text-sm mb-2">📅 Próximos vencimientos</h2>
+      ${agenda}
+    </div>
+
+    <div class="card p-4">
+      <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+        <label class="flex items-center gap-2 text-sm">
+          <input type="checkbox" ${cfg.tieneEmpleados ? 'checked' : ''} onchange="Fiscal.setEmpleados(this.checked)" />
+          Mi empresa <strong>tiene empleados</strong> (activa IMSS / INFONAVIT / retenciones)
+        </label>
+        <div class="flex gap-2">
+          <button onclick="Fiscal.restaurar()" class="px-3 py-1.5 text-sm rounded-lg border text-gray-600 hover:bg-gray-50">Restaurar predeterminadas</button>
+          <button onclick="Fiscal.agregar()" class="px-3 py-1.5 text-sm rounded-lg bg-marca text-white font-semibold hover:bg-marca2">+ Agregar obligación</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm min-w-[640px]">
+          <thead class="bg-crema text-[10px] uppercase text-gray-500">
+            <tr><th class="px-2 py-2">Activa</th><th class="px-2 py-2 text-left">Obligación</th><th class="px-2 py-2 text-left">Entidad</th><th class="px-2 py-2 text-left">Periodicidad</th><th class="px-2 py-2 text-left">Vence</th><th class="px-2 py-2"></th></tr>
+          </thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+      <p class="text-xs text-gray-400 mt-3">⚠️ Fechas y obligaciones son de apoyo y <strong>configurables</strong>. Confirma siempre con tu contador y con el SAT: cambian con la ley y según tu régimen. (Nota: el ISSSTE aplica al sector público.)</p>
+    </div>`;
+  },
+
+  // -------------------- ETAPA 8: ESTADOS FINANCIEROS --------------------
+  estados() {
+    if (!App.empresaActiva) return this.proximamente('Estados financieros');
+
+    const cuentas = DB.cuentas(App.empresaActiva.id);
+    const info = {};
+    cuentas.forEach(c => { info[c.codigo] = c; });
+    const asientos = DB.asientos(App.empresaActiva.id);
+
+    if (asientos.length === 0) {
+      return `
+      <div class="mb-4"><h1 class="text-xl font-bold">Estados financieros</h1>
+        <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong></p></div>
+      <div class="card p-10 text-center text-gray-500"><div class="text-4xl mb-2">📊</div>
+        Aún no hay datos. Captura asientos y los estados se generan solos.</div>`;
+    }
+
+    // Acumular cargos/abonos por cuenta y calcular saldo según su naturaleza
+    const acum = {};
+    asientos.forEach(as => as.lineas.forEach(l => {
+      const a = acum[l.cuenta] = acum[l.cuenta] || { cargos: 0, abonos: 0 };
+      if (l.tipo === 'cargo') a.cargos += Number(l.monto) || 0; else a.abonos += Number(l.monto) || 0;
+    }));
+    const saldoDe = (cod) => {
+      const c = info[cod], a = acum[cod];
+      if (!a) return 0;
+      const deudora = c && (c.tipo === 'activo' || c.tipo === 'gasto');
+      return deudora ? (a.cargos - a.abonos) : (a.abonos - a.cargos);
+    };
+
+    const grupos = { activo: [], pasivo: [], capital: [], ingreso: [], gasto: [] };
+    Object.keys(acum).forEach(cod => {
+      const c = info[cod];
+      const tipo = c ? c.tipo : 'activo';
+      grupos[tipo].push({ cod, nombre: c ? c.nombre : '⚠️ fuera del catálogo', s: saldoDe(cod) });
+    });
+    Object.values(grupos).forEach(g => g.sort((a, b) => a.cod.localeCompare(b.cod)));
+
+    const sum = arr => arr.reduce((t, x) => t + x.s, 0);
+    const totIng = sum(grupos.ingreso), totGas = sum(grupos.gasto);
+    const utilidad = Math.round((totIng - totGas) * 100) / 100;
+    const totAct = sum(grupos.activo), totPas = sum(grupos.pasivo), totCap = sum(grupos.capital);
+    const capitalTotal = totCap + utilidad;
+    const cuadra = Math.round(totAct * 100) === Math.round((totPas + capitalTotal) * 100);
+
+    const filas = (arr) => arr.length
+      ? arr.map(x => `<tr><td class="py-1 pl-4">${UI.esc(x.cod)} · ${UI.esc(x.nombre)}</td><td class="py-1 pr-2 text-right">${UI.money(x.s)}</td></tr>`).join('')
+      : `<tr><td class="py-1 pl-4 text-gray-400" colspan="2">— sin movimientos —</td></tr>`;
+    const subtotal = (etq, val) => `<tr class="border-t border-gray-200 font-semibold"><td class="py-1 pl-2">${etq}</td><td class="py-1 pr-2 text-right">${UI.money(val)}</td></tr>`;
+
+    const esUtilidad = utilidad >= 0;
+
+    // ---- Estado de Resultados ----
+    const estResultados = `
+    <div class="card p-4">
+      <h2 class="font-bold text-marca mb-2">Estado de Resultados</h2>
+      <table class="w-full text-sm">
+        <tbody>
+          <tr class="text-xs uppercase text-gray-400"><td class="pt-1">Ingresos</td><td></td></tr>
+          ${filas(grupos.ingreso)}
+          ${subtotal('Total de ingresos', totIng)}
+          <tr class="text-xs uppercase text-gray-400"><td class="pt-3">(−) Costos y gastos</td><td></td></tr>
+          ${filas(grupos.gasto)}
+          ${subtotal('Total de costos y gastos', totGas)}
+          <tr class="border-t-2 border-marca font-bold ${esUtilidad ? 'text-green-700' : 'text-red-700'}">
+            <td class="py-2 pl-2">= ${esUtilidad ? 'Utilidad' : 'Pérdida'} del ejercicio</td>
+            <td class="py-2 pr-2 text-right">${UI.money(Math.abs(utilidad))}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>`;
+
+    // ---- Estado de Situación Financiera (Balance General) ----
+    const estBalance = `
+    <div class="card p-4">
+      <h2 class="font-bold text-marca mb-2">Estado de Situación Financiera <span class="font-normal text-xs text-gray-400">(Balance General)</span></h2>
+      <table class="w-full text-sm">
+        <tbody>
+          <tr class="text-xs uppercase text-gray-400"><td class="pt-1">Activo</td><td></td></tr>
+          ${filas(grupos.activo)}
+          ${subtotal('Total activo', totAct)}
+          <tr class="text-xs uppercase text-gray-400"><td class="pt-3">Pasivo</td><td></td></tr>
+          ${filas(grupos.pasivo)}
+          ${subtotal('Total pasivo', totPas)}
+          <tr class="text-xs uppercase text-gray-400"><td class="pt-3">Capital contable</td><td></td></tr>
+          ${filas(grupos.capital)}
+          <tr><td class="py-1 pl-4">Resultado del ejercicio (${esUtilidad ? 'utilidad' : 'pérdida'})</td><td class="py-1 pr-2 text-right ${esUtilidad ? '' : 'text-red-600'}">${UI.money(utilidad)}</td></tr>
+          ${subtotal('Total capital contable', capitalTotal)}
+          <tr class="border-t-2 border-marca font-bold"><td class="py-2 pl-2">Pasivo + Capital</td><td class="py-2 pr-2 text-right">${UI.money(totPas + capitalTotal)}</td></tr>
+        </tbody>
+      </table>
+    </div>`;
+
+    const comprobacion = cuadra
+      ? `<div class="border border-green-200 bg-green-50 text-green-800 rounded-lg px-3 py-2 text-sm mb-4">✅ El balance cuadra: <strong>Activo (${UI.money(totAct)}) = Pasivo + Capital (${UI.money(totPas + capitalTotal)})</strong>. Se cumple la ecuación contable.</div>`
+      : `<div class="border border-red-200 bg-red-50 text-red-800 rounded-lg px-3 py-2 text-sm mb-4">⚠️ El balance NO cuadra: Activo ${UI.money(totAct)} ≠ Pasivo + Capital ${UI.money(totPas + capitalTotal)}. Revisa tus asientos.</div>`;
+
+    return `
+    <div class="mb-3">
+      <h1 class="text-xl font-bold">Estados financieros</h1>
+      <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · generados automáticamente desde tus asientos</p>
+    </div>
+    ${this.tip('El <strong>Estado de Resultados</strong> te dice si ganaste o perdiste (Ingresos − Gastos). El <strong>Balance General</strong> es una foto de lo que <em>tienes</em> (Activo), lo que <em>debes</em> (Pasivo) y lo que es <em>tuyo</em> (Capital). Siempre se cumple: <strong>Activo = Pasivo + Capital</strong>. La utilidad del período se suma al capital.')}
+    ${comprobacion}
+    <div class="grid lg:grid-cols-2 gap-4">
+      ${estResultados}
+      ${estBalance}
+    </div>
+    <p class="text-xs text-gray-400 mt-3">Nota: son estados de apoyo generados de tus registros. Confírmalos con tu contador antes de usarlos oficialmente.</p>`;
+  },
+
+  // -------------------- ETAPA 2: CATÁLOGO --------------------
+  catalogo() {
+    if (!App.empresaActiva) return this.proximamente('Catálogo');
+    const cuentas = DB.cuentas(App.empresaActiva.id);
+
+    // Etiquetas y orden de los tipos
+    const tipos = [
+      { id:'activo',  etiqueta:'Activo',   color:'text-emerald-700' },
+      { id:'pasivo',  etiqueta:'Pasivo',   color:'text-rose-700' },
+      { id:'capital', etiqueta:'Capital',  color:'text-indigo-700' },
+      { id:'ingreso', etiqueta:'Ingresos', color:'text-sky-700' },
+      { id:'gasto',   etiqueta:'Costos y gastos', color:'text-amber-700' },
+    ];
+
+    const bloques = tipos.map(t => {
+      const lista = cuentas.filter(c => c.tipo === t.id)
+                           .sort((a,b) => a.codigo.localeCompare(b.codigo));
+      const filas = lista.map(c => `
+        <tr class="border-t border-gray-100">
+          <td class="px-3 py-2 font-mono text-xs text-gray-500">${UI.esc(c.codigo)}</td>
+          <td class="px-3 py-2">${UI.esc(c.nombre)}</td>
+          <td class="px-3 py-2 text-xs text-gray-400">${c.naturaleza}</td>
+          <td class="px-3 py-2 text-right whitespace-nowrap">
+            <button onclick="Acciones.editarCuenta('${c.id}')" class="text-gray-500 text-xs hover:underline mr-2">Editar</button>
+            <button onclick="Acciones.eliminarCuenta('${c.id}')" class="text-red-500 text-xs hover:underline">Eliminar</button>
+          </td>
+        </tr>`).join('') || `<tr><td colspan="4" class="px-3 py-3 text-center text-xs text-gray-400">Sin cuentas de este tipo.</td></tr>`;
+
+      return `<div class="card overflow-hidden mb-4">
+        <div class="px-3 py-2 bg-crema flex items-center justify-between">
+          <span class="font-semibold ${t.color}">${t.etiqueta}</span>
+          <span class="text-xs text-gray-400">${lista.length}</span>
+        </div>
+        <table class="w-full text-sm"><tbody>${filas}</tbody></table>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <div>
+        <h1 class="text-xl font-bold">Catálogo de cuentas</h1>
+        <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(App.empresaActiva.nombre)}</strong> · ${cuentas.length} cuentas · basado en el código agrupador del SAT</p>
+      </div>
+      <div class="flex gap-2">
+        <button onclick="Acciones.restaurarCatalogo()" class="px-3 py-2 text-sm rounded-lg border text-gray-600 hover:bg-gray-50" title="Vuelve a agregar las cuentas base del SAT que falten">Restaurar base SAT</button>
+        <button onclick="Acciones.nuevaCuenta()" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">+ Nueva cuenta</button>
+      </div>
+    </div>
+    ${bloques}`;
+  },
+
+  formCuenta(c) {
+    const esNueva = !c;
+    c = c || { codigo:'', nombre:'', tipo:'gasto', naturaleza:'deudora' };
+    return `
+      <form onsubmit="Acciones.guardarCuenta(event, '${esNueva ? '' : c.id}'); return false;" class="space-y-3">
+        <div class="grid grid-cols-3 gap-3">
+          <div class="col-span-1">
+            <label class="text-sm font-medium">Código *</label>
+            <input id="c_codigo" required value="${UI.esc(c.codigo)}" placeholder="601.10"
+                   class="w-full border rounded-md px-3 py-2 mt-1 font-mono" />
+          </div>
+          <div class="col-span-2">
+            <label class="text-sm font-medium">Nombre de la cuenta *</label>
+            <input id="c_nombre" required value="${UI.esc(c.nombre)}" placeholder="Ej. Seguros y fianzas"
+                   class="w-full border rounded-md px-3 py-2 mt-1" />
+          </div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm font-medium">Tipo *</label>
+            <select id="c_tipo" onchange="Acciones.sugerirNaturaleza()" class="w-full border rounded-md px-3 py-2 mt-1">
+              <option value="activo"  ${c.tipo==='activo' ?'selected':''}>Activo</option>
+              <option value="pasivo"  ${c.tipo==='pasivo' ?'selected':''}>Pasivo</option>
+              <option value="capital" ${c.tipo==='capital'?'selected':''}>Capital</option>
+              <option value="ingreso" ${c.tipo==='ingreso'?'selected':''}>Ingreso</option>
+              <option value="gasto"   ${c.tipo==='gasto'  ?'selected':''}>Costo / Gasto</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium">Naturaleza *</label>
+            <select id="c_naturaleza" class="w-full border rounded-md px-3 py-2 mt-1">
+              <option value="deudora"  ${c.naturaleza==='deudora' ?'selected':''}>Deudora (aumenta con cargo)</option>
+              <option value="acreedora"${c.naturaleza==='acreedora'?'selected':''}>Acreedora (aumenta con abono)</option>
+            </select>
+          </div>
+        </div>
+        <p class="text-xs text-gray-500">Regla: Activo y Gasto son de naturaleza <strong>deudora</strong>; Pasivo, Capital e Ingreso son <strong>acreedora</strong>.</p>
+        <div class="flex gap-2 justify-end pt-2">
+          <button type="button" onclick="UI.cerrarModal()" class="px-4 py-2 text-sm rounded-lg border">Cancelar</button>
+          <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-marca text-white font-semibold hover:bg-marca2">${esNueva ? 'Agregar cuenta' : 'Guardar cambios'}</button>
+        </div>
+      </form>`;
+  },
+};
+
+/* ============================================================================
+   5.5) CAPTURA CON IA  (Captura)  —  ETAPA 4
+   ----------------------------------------------------------------------------
+   El usuario describe la operación en palabras → Claude propone el asiento →
+   el usuario lo revisa, edita y confirma. No se guarda si no cuadra.
+   ============================================================================ */
+const Captura = {
+  estado: null,     // { fecha, descripcion, lineas:[{cuenta, tipo, monto}] }
+
+  reset() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    this.estado = { fecha: hoy, descripcion: '', lineas: [] };
+  },
+  asegurar() { if (!this.estado) this.reset(); },
+  lineaVacia() { return { cuenta: '', tipo: 'cargo', monto: '' }; },
+
+  // Se llama después de pintar la vista, para dibujar el editor con el borrador actual.
+  montar() { this.asegurar(); this.renderEditor(); },
+
+  // ----- Pedir el asiento a la IA -----
+  async pedirIA() {
+    const desc = document.getElementById('cap_desc').value.trim();
+    const fecha = document.getElementById('cap_fecha').value;
+    if (!desc) { UI.toast('Escribe primero qué operación quieres registrar'); return; }
+    this.estado.fecha = fecha;
+    const btn = document.getElementById('cap_btnIA');
+    btn.disabled = true; btn.textContent = 'Pensando…';
+    this.mensajeIA('⏳ La IA está analizando tu operación y proponiendo el asiento…', 'cargando');
+    try {
+      const r = await IA.proponerAsiento(desc, fecha);
+      const codigos = new Set(DB.cuentas(App.empresaActiva.id).map(c => c.codigo));
+      let ajustadas = 0;
+      this.estado.fecha = r.asiento.fecha || fecha;
+      this.estado.descripcion = r.asiento.descripcion || desc;
+      this.estado.lineas = (r.asiento.lineas || []).map(l => {
+        const cod = String(l.cuenta || '');
+        const valida = codigos.has(cod);
+        if (cod && !valida) ajustadas++;
+        return { cuenta: valida ? cod : '', tipo: l.tipo === 'abono' ? 'abono' : 'cargo', monto: l.monto };
+      });
+      if (this.estado.lineas.length < 2) this.estado.lineas = [this.lineaVacia(), this.lineaVacia()];
+      this.mensajeIA(ajustadas
+        ? `✅ Asiento propuesto. Ojo: ${ajustadas} cuenta(s) sugeridas no están en tu catálogo, así que quedaron en blanco para que las elijas.`
+        : '✅ Asiento propuesto por la IA. Revísalo, edítalo si hace falta y guárdalo.', ajustadas ? 'cargando' : 'ok');
+      this.renderEditor();
+    } catch (e) {
+      this.mensajeIA('❌ ' + UI.esc(e.message).replace(/\n/g, '<br>'), 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = '✨ Proponer asiento con IA';
+    }
+  },
+
+  mensajeIA(html, tipo) {
+    const colores = { ok:'bg-green-50 text-green-800 border-green-200', error:'bg-red-50 text-red-800 border-red-200', cargando:'bg-gray-50 text-gray-600 border-gray-200' };
+    const el = document.getElementById('cap_iaMsg');
+    if (el) el.innerHTML = `<div class="border rounded-md p-3 mt-2 text-sm ${colores[tipo] || colores.cargando}">${html}</div>`;
+  },
+
+  // ----- Edición de líneas -----
+  setLinea(i, campo, valor) { this.estado.lineas[i][campo] = valor; this.actualizarTotales(); },
+  setConcepto(v) { this.estado.descripcion = v; },
+  setFecha(v) { this.estado.fecha = v; },
+  agregarLinea() { this.estado.lineas.push(this.lineaVacia()); this.renderEditor(); },
+  quitarLinea(i) { this.estado.lineas.splice(i, 1); this.renderEditor(); },
+
+  // Empieza un asiento manual (sin IA)
+  manual() {
+    if (this.estado.lineas.length === 0) this.estado.lineas = [this.lineaVacia(), this.lineaVacia()];
+    this.renderEditor();
+    this.mensajeIA('✍️ Modo manual: llena las líneas del asiento tú mismo.', 'cargando');
+  },
+
+  totales() {
+    let c = 0, a = 0;
+    this.estado.lineas.forEach(l => {
+      const m = Number(l.monto) || 0;
+      if (l.tipo === 'cargo') c += m; else a += m;
+    });
+    const cc = Math.round(c * 100), aa = Math.round(a * 100);
+    return { cargos: c, abonos: a, dif: (cc - aa) / 100, cuadra: cc === aa && cc > 0 };
+  },
+
+  // Validación reforzada: devuelve una lista de problemas con explicación didáctica.
+  // nivel 'error' = bloquea el guardado; 'aviso' = recomendación (sí deja guardar).
+  validar() {
+    const e = this.estado;
+    const issues = [];
+    const codigos = new Set(DB.cuentas(App.empresaActiva.id).map(c => c.codigo));
+
+    // Fecha
+    if (!e.fecha) {
+      issues.push({ n: 'error', m: 'Falta la fecha del asiento.' });
+    } else {
+      const f = new Date(e.fecha + 'T00:00:00');
+      const hoy = new Date(); hoy.setHours(23, 59, 59, 999);
+      if (isNaN(f.getTime())) issues.push({ n: 'error', m: 'La fecha no es válida.' });
+      else if (f > hoy) issues.push({ n: 'aviso', m: 'La fecha es futura. ¿Seguro que la operación ya ocurrió?' });
+      else if (f.getFullYear() < 2000) issues.push({ n: 'aviso', m: 'La fecha parece demasiado antigua; revísala.' });
+    }
+
+    // Concepto
+    if (!(e.descripcion || '').trim()) issues.push({ n: 'aviso', m: 'Escribe un concepto para identificar el asiento más adelante.' });
+
+    // Líneas
+    let validas = 0, cargos = 0, abonos = 0, huboCargo = false, huboAbono = false;
+    e.lineas.forEach((l, i) => {
+      const monto = Number(l.monto) || 0;
+      const tieneCuenta = !!l.cuenta;
+      if (tieneCuenta && !codigos.has(l.cuenta)) issues.push({ n: 'error', m: `La cuenta "${l.cuenta}" no está en tu catálogo. Elígela de la lista en la línea ${i + 1}.` });
+      if (tieneCuenta && monto <= 0) issues.push({ n: 'error', m: `La línea ${i + 1} tiene cuenta pero el monto es cero. Ponle un monto mayor a cero o quítala.` });
+      if (!tieneCuenta && monto > 0) issues.push({ n: 'error', m: `La línea ${i + 1} tiene monto pero no elegiste la cuenta.` });
+      if (tieneCuenta && monto > 0) { validas++; if (l.tipo === 'cargo') { cargos += monto; huboCargo = true; } else { abonos += monto; huboAbono = true; } }
+    });
+
+    if (validas < 2) {
+      issues.push({ n: 'error', m: 'Un asiento de partida doble necesita al menos 2 líneas completas (con cuenta y monto).' });
+    } else {
+      if (!huboCargo) issues.push({ n: 'error', m: 'Falta al menos un CARGO. Toda operación afecta ambos lados.' });
+      if (!huboAbono) issues.push({ n: 'error', m: 'Falta al menos un ABONO. Toda operación afecta ambos lados.' });
+      if (Math.round(cargos * 100) !== Math.round(abonos * 100)) {
+        issues.push({ n: 'error', m: `No cuadra: los cargos (${UI.money(cargos)}) deben ser iguales a los abonos (${UI.money(abonos)}). Diferencia: ${UI.money(Math.abs(cargos - abonos))}.` });
+      }
+    }
+    return issues;
+  },
+
+  // Opciones del selector de cuenta (desde el catálogo de la empresa)
+  opcionesCuenta(sel) {
+    const cuentas = DB.cuentas(App.empresaActiva.id).slice().sort((a, b) => a.codigo.localeCompare(b.codigo));
+    return '<option value="">— elige cuenta —</option>' + cuentas.map(c =>
+      `<option value="${UI.esc(c.codigo)}" ${c.codigo === sel ? 'selected' : ''}>${UI.esc(c.codigo)} · ${UI.esc(c.nombre)}</option>`
+    ).join('');
+  },
+
+  // Dibuja solo el editor (concepto + tabla de líneas + totales + botón guardar)
+  renderEditor() {
+    const cont = document.getElementById('cap_editor');
+    if (!cont) return;
+    if (!this.estado.lineas.length) {
+      cont.innerHTML = `<div class="text-sm text-gray-400 text-center py-6">
+        Escribe tu operación arriba y pulsa <strong>Proponer asiento con IA</strong>,
+        o <button onclick="Captura.manual()" class="text-marca2 underline">créalo manualmente</button>.
+      </div>`;
+      return;
+    }
+
+    const filas = this.estado.lineas.map((l, i) => `
+      <tr class="border-t border-gray-100">
+        <td class="p-1">
+          <select onchange="Captura.setLinea(${i},'cuenta',this.value)" class="w-full border rounded-md px-2 py-1.5 text-sm">
+            ${this.opcionesCuenta(l.cuenta)}
+          </select>
+        </td>
+        <td class="p-1 w-28">
+          <select onchange="Captura.setLinea(${i},'tipo',this.value)" class="w-full border rounded-md px-2 py-1.5 text-sm">
+            <option value="cargo" ${l.tipo==='cargo'?'selected':''}>Cargo</option>
+            <option value="abono" ${l.tipo==='abono'?'selected':''}>Abono</option>
+          </select>
+        </td>
+        <td class="p-1 w-32">
+          <input type="number" step="0.01" min="0" value="${l.monto}" placeholder="0.00"
+                 oninput="Captura.setLinea(${i},'monto',this.value)"
+                 class="w-full border rounded-md px-2 py-1.5 text-sm text-right" />
+        </td>
+        <td class="p-1 w-8 text-center">
+          <button onclick="Captura.quitarLinea(${i})" class="text-red-400 hover:text-red-600" title="Quitar línea">✕</button>
+        </td>
+      </tr>`).join('');
+
+    cont.innerHTML = `
+      <div class="mb-3">
+        <label class="text-sm font-medium">Concepto del asiento</label>
+        <input value="${UI.esc(this.estado.descripcion)}" oninput="Captura.setConcepto(this.value)"
+               class="w-full border rounded-md px-3 py-2 mt-1 text-sm" placeholder="Ej. Compra de gasolina en efectivo" />
+      </div>
+      <table class="w-full text-sm">
+        <thead class="text-xs text-gray-500 uppercase">
+          <tr><th class="text-left px-1">Cuenta</th><th class="text-left px-1">Tipo</th><th class="text-right px-1">Monto</th><th></th></tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+      <button onclick="Captura.agregarLinea()" class="mt-2 text-sm text-marca2 font-semibold hover:underline">+ Agregar línea</button>
+      <div id="cap_totales" class="mt-3"></div>`;
+
+    this.actualizarTotales();
+  },
+
+  // Actualiza solo el bloque de totales + validaciones (sin re-dibujar la tabla)
+  actualizarTotales() {
+    const box = document.getElementById('cap_totales');
+    if (!box) return;
+    const t = this.totales();
+    const issues = this.validar();
+    const errores = issues.filter(i => i.n === 'error');
+    const avisos = issues.filter(i => i.n === 'aviso');
+    const puedeGuardar = errores.length === 0;
+    const badge = t.cuadra
+      ? '<span class="text-green-700 font-bold">✓ Cuadra</span>'
+      : `<span class="text-red-700 font-bold">✗ Descuadre de ${UI.money(Math.abs(t.dif))}</span>`;
+    const lista = (arr, clase, icono) => arr.length
+      ? `<ul class="mt-2 space-y-1">${arr.map(i => `<li class="text-xs ${clase}">${icono} ${UI.esc(i.m)}</li>`).join('')}</ul>` : '';
+    box.innerHTML = `
+      <div class="bg-crema rounded-lg px-3 py-2">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="text-sm">
+            Cargos: <strong>${UI.money(t.cargos)}</strong> &nbsp;·&nbsp;
+            Abonos: <strong>${UI.money(t.abonos)}</strong> &nbsp;·&nbsp; ${badge}
+          </div>
+          <button onclick="Captura.guardar()" ${puedeGuardar ? '' : 'disabled'}
+                  class="px-4 py-2 rounded-lg text-sm font-semibold text-white ${puedeGuardar ? 'bg-marca hover:bg-marca2' : 'bg-gray-300 cursor-not-allowed'}">
+            Guardar asiento
+          </button>
+        </div>
+        ${lista(errores, 'text-red-700', '⛔')}
+        ${lista(avisos, 'text-amber-700', '⚠️')}
+      </div>
+      <p class="text-xs text-gray-400 mt-1">No se puede guardar mientras haya ⛔. Los ⚠️ son recomendaciones (sí te dejan guardar).</p>`;
+  },
+
+  guardar() {
+    const errores = this.validar().filter(i => i.n === 'error');
+    if (errores.length) { UI.toast('Corrige lo marcado con ⛔ antes de guardar'); this.actualizarTotales(); return; }
+    const lineas = this.estado.lineas
+      .filter(l => l.cuenta && Number(l.monto) > 0)
+      .map(l => ({ cuenta: l.cuenta, tipo: l.tipo, monto: Number(l.monto) }));
+
+    const asiento = {
+      id: DB.nuevoId(),
+      fecha: this.estado.fecha,
+      descripcion: (this.estado.descripcion || '').trim() || '(sin concepto)',
+      lineas,
+      creado: new Date().toISOString(),
+    };
+    const lista = DB.asientos(App.empresaActiva.id);
+    lista.push(asiento);
+    DB.guardarAsientos(App.empresaActiva.id, lista);
+    UI.toast('Asiento guardado ✓');
+    this.reset();
+    App.render();
+  },
+};
+
+/* ============================================================================
+   5.7) FISCAL  —  cálculo de vencimientos y alertas
+   ============================================================================ */
+const Fiscal = {
+  hoy() { const d = new Date(); d.setHours(0, 0, 0, 0); return d; },
+
+  // Próxima fecha de vencimiento de una obligación (>= hoy)
+  proximaFecha(ob) {
+    const hoy = this.hoy();
+    if (ob.periodicidad === 'anual') {
+      let f = new Date(hoy.getFullYear(), (ob.mesAnual || 1) - 1, ob.diaAnual || 1); f.setHours(0, 0, 0, 0);
+      if (f < hoy) f = new Date(hoy.getFullYear() + 1, (ob.mesAnual || 1) - 1, ob.diaAnual || 1);
+      return f;
+    }
+    // mensual o bimestral: los bimestrales se presentan en meses impares (mar, may, jul...)
+    const mesesValidos = ob.periodicidad === 'bimestral' ? [1, 3, 5, 7, 9, 11] : null;
+    const y = hoy.getFullYear(), m = hoy.getMonth();
+    for (let i = 0; i < 24; i++) {
+      const idx = m + i;
+      const year = y + Math.floor(idx / 12);
+      const month0 = ((idx % 12) + 12) % 12;
+      if (mesesValidos && mesesValidos.indexOf(month0 + 1) === -1) continue;
+      const f = new Date(year, month0, ob.diaLimite || 17); f.setHours(0, 0, 0, 0);
+      if (f >= hoy) return f;
+    }
+    return null;
+  },
+
+  dias(f) { return Math.round((f - this.hoy()) / 86400000); },
+  fmt(f) { return f.toLocaleDateString('es-MX', { day: '2-digit', month: 'long', year: 'numeric' }); },
+
+  // Obligaciones activas y aplicables (según empleados), con su próxima fecha, ordenadas por urgencia
+  proximas(idEmpresa) {
+    const cfg = DB.fiscal(idEmpresa);
+    return cfg.obligaciones
+      .filter(o => o.activo && (!o.requiereEmpleados || cfg.tieneEmpleados))
+      .map(o => { const f = this.proximaFecha(o); return { ob: o, fecha: f, dias: this.dias(f) }; })
+      .sort((a, b) => a.fecha - b.fecha);
+  },
+
+  // Color según urgencia (días restantes)
+  urgencia(dias) {
+    if (dias <= 3)  return { clase: 'bg-red-100 text-red-800 border-red-200',   etq: dias <= 0 ? 'Vence hoy' : `en ${dias} día(s)` };
+    if (dias <= 10) return { clase: 'bg-amber-100 text-amber-800 border-amber-200', etq: `en ${dias} días` };
+    return { clase: 'bg-green-100 text-green-800 border-green-200', etq: `en ${dias} días` };
+  },
+
+  // ----- Acciones de configuración -----
+  setEmpleados(v) {
+    const c = DB.fiscal(App.empresaActiva.id);
+    c.tieneEmpleados = v;
+    // Al marcar/desmarcar empleados, activa/desactiva las obligaciones que dependen de ello.
+    c.obligaciones.forEach(o => { if (o.requiereEmpleados) o.activo = v; });
+    DB.guardarFiscal(App.empresaActiva.id, c);
+    App.render();
+  },
+  setCampo(id, campo, valor) {
+    const c = DB.fiscal(App.empresaActiva.id);
+    const o = c.obligaciones.find(x => x.id === id);
+    if (!o) return;
+    if (['diaLimite', 'diaAnual', 'mesAnual'].indexOf(campo) !== -1) valor = Number(valor) || 0;
+    o[campo] = valor;
+    DB.guardarFiscal(App.empresaActiva.id, c);
+    App.render();
+  },
+  agregar() {
+    const c = DB.fiscal(App.empresaActiva.id);
+    c.obligaciones.push({ id: 'ob_' + Math.random().toString(36).slice(2, 8), nombre: 'Nueva obligación', entidad: 'SAT', periodicidad: 'mensual', diaLimite: 17, requiereEmpleados: false, activo: true, nota: '' });
+    DB.guardarFiscal(App.empresaActiva.id, c);
+    App.render();
+  },
+  quitar(id) {
+    const c = DB.fiscal(App.empresaActiva.id);
+    DB.guardarFiscal(App.empresaActiva.id, { tieneEmpleados: c.tieneEmpleados, obligaciones: c.obligaciones.filter(x => x.id !== id) });
+    App.render();
+  },
+  restaurar() {
+    if (!confirm('Se restaurarán las obligaciones predeterminadas (se pierden tus cambios en esta empresa). ¿Continuar?')) return;
+    DB.guardarFiscal(App.empresaActiva.id, { tieneEmpleados: DB.fiscal(App.empresaActiva.id).tieneEmpleados, obligaciones: FISCAL_BASE.map(o => Object.assign({}, o)) });
+    App.render();
+  },
+};
+
+/* ============================================================================
+   5.8) IMPUESTOS  —  simulación de IVA e ISR (tasas configurables)
+   ============================================================================ */
+const Impuestos = {
+  setCampo(campo, valor) {
+    const c = DB.impuestos(App.empresaActiva.id);
+    if (campo === 'ivaTasa' || campo === 'isrTasa') valor = Number(valor) || 0;
+    c[campo] = valor;
+    DB.guardarImpuestos(App.empresaActiva.id, c);
+    App.render();
+  },
+  // Presets rápidos por tipo de régimen (todos editables después)
+  preset(nombre) {
+    let c;
+    if (nombre === 'resico')   c = { ivaTasa: 16, isrModo: 'ingresos', isrTasa: 1 };
+    else if (nombre === 'pf')  c = { ivaTasa: 16, isrModo: 'utilidad', isrTasa: 30 };
+    else /* persona moral */   c = { ivaTasa: 16, isrModo: 'utilidad', isrTasa: 30 };
+    DB.guardarImpuestos(App.empresaActiva.id, c);
+    App.render();
+  },
+};
+
+/* ============================================================================
+   5.9) EXPORT  —  descargar reportes a Excel (.xlsx) y PDF (imprimir)
+   ============================================================================ */
+const Export = {
+  // Contexto contable compartido (cuentas, asientos, saldos)
+  _ctx() {
+    const id = App.empresaActiva.id;
+    const cuentas = DB.cuentas(id);
+    const info = {}; cuentas.forEach(c => { info[c.codigo] = c; });
+    const asientos = DB.asientos(id).slice()
+      .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || '') || (a.creado || '').localeCompare(b.creado || ''));
+    const acum = {};
+    asientos.forEach(as => as.lineas.forEach(l => {
+      const a = acum[l.cuenta] = acum[l.cuenta] || { cargos: 0, abonos: 0 };
+      if (l.tipo === 'cargo') a.cargos += Number(l.monto) || 0; else a.abonos += Number(l.monto) || 0;
+    }));
+    const saldoDe = (cod) => {
+      const c = info[cod], a = acum[cod];
+      if (!a) return 0;
+      const d = c && (c.tipo === 'activo' || c.tipo === 'gasto');
+      return d ? (a.cargos - a.abonos) : (a.abonos - a.cargos);
+    };
+    const nom = (cod) => info[cod] ? info[cod].nombre : '(fuera de catálogo)';
+    return { id, empresa: App.empresaActiva, cuentas, info, asientos, acum, saldoDe, nom };
+  },
+
+  r2(n) { return Math.round((Number(n) || 0) * 100) / 100; },
+
+  // ---- Datos como arreglos (para Excel) ----
+  diarioAOA(x) {
+    const rows = [['Folio', 'Fecha', 'Concepto', 'Código', 'Cuenta', 'Cargo', 'Abono']];
+    let tc = 0, ta = 0;
+    x.asientos.forEach((as, i) => as.lineas.forEach((l, j) => {
+      if (l.tipo === 'cargo') tc += Number(l.monto) || 0; else ta += Number(l.monto) || 0;
+      rows.push([j === 0 ? i + 1 : '', j === 0 ? as.fecha : '', j === 0 ? as.descripcion : '', l.cuenta, x.nom(l.cuenta),
+        l.tipo === 'cargo' ? this.r2(l.monto) : '', l.tipo === 'abono' ? this.r2(l.monto) : '']);
+    }));
+    rows.push([], ['', '', '', '', 'TOTALES', this.r2(tc), this.r2(ta)]);
+    return rows;
+  },
+  balanzaAOA(x) {
+    const rows = [['Código', 'Cuenta', 'Sumas cargos', 'Sumas abonos', 'Saldo deudor', 'Saldo acreedor']];
+    let sc = 0, sa = 0, sd = 0, sac = 0;
+    Object.keys(x.acum).sort((a, b) => a.localeCompare(b)).forEach(cod => {
+      const { cargos, abonos } = x.acum[cod];
+      const neto = this.r2(cargos - abonos);
+      const deu = neto > 0 ? neto : 0, acr = neto < 0 ? -neto : 0;
+      sc += cargos; sa += abonos; sd += deu; sac += acr;
+      rows.push([cod, x.nom(cod), this.r2(cargos), this.r2(abonos), deu || '', acr || '']);
+    });
+    rows.push([], ['', 'TOTALES', this.r2(sc), this.r2(sa), this.r2(sd), this.r2(sac)]);
+    return rows;
+  },
+  gruposSaldos(x) {
+    const g = { activo: [], pasivo: [], capital: [], ingreso: [], gasto: [] };
+    Object.keys(x.acum).forEach(cod => {
+      const c = x.info[cod], tipo = c ? c.tipo : 'activo';
+      g[tipo].push({ cod, nombre: x.nom(cod), s: x.saldoDe(cod) });
+    });
+    Object.values(g).forEach(a => a.sort((p, q) => p.cod.localeCompare(q.cod)));
+    const sum = a => a.reduce((t, y) => t + y.s, 0);
+    const totIng = sum(g.ingreso), totGas = sum(g.gasto), util = this.r2(totIng - totGas);
+    const totAct = sum(g.activo), totPas = sum(g.pasivo), totCap = sum(g.capital);
+    return { g, totIng, totGas, util, totAct, totPas, totCap, capitalTotal: totCap + util };
+  },
+  resultadosAOA(x) {
+    const r = this.gruposSaldos(x);
+    const rows = [['ESTADO DE RESULTADOS'], [], ['Ingresos', '']];
+    r.g.ingreso.forEach(i => rows.push([i.cod + ' ' + i.nombre, this.r2(i.s)]));
+    rows.push(['Total de ingresos', this.r2(r.totIng)], [], ['Costos y gastos', '']);
+    r.g.gasto.forEach(i => rows.push([i.cod + ' ' + i.nombre, this.r2(i.s)]));
+    rows.push(['Total de costos y gastos', this.r2(r.totGas)], [],
+      [(r.util >= 0 ? 'Utilidad' : 'Pérdida') + ' del ejercicio', this.r2(Math.abs(r.util))]);
+    return rows;
+  },
+  balanceAOA(x) {
+    const r = this.gruposSaldos(x);
+    const rows = [['ESTADO DE SITUACIÓN FINANCIERA (BALANCE GENERAL)'], [], ['Activo', '']];
+    r.g.activo.forEach(i => rows.push([i.cod + ' ' + i.nombre, this.r2(i.s)]));
+    rows.push(['Total activo', this.r2(r.totAct)], [], ['Pasivo', '']);
+    r.g.pasivo.forEach(i => rows.push([i.cod + ' ' + i.nombre, this.r2(i.s)]));
+    rows.push(['Total pasivo', this.r2(r.totPas)], [], ['Capital contable', '']);
+    r.g.capital.forEach(i => rows.push([i.cod + ' ' + i.nombre, this.r2(i.s)]));
+    rows.push(['Resultado del ejercicio', this.r2(r.util)], ['Total capital contable', this.r2(r.capitalTotal)], [],
+      ['Pasivo + Capital', this.r2(r.totPas + r.capitalTotal)]);
+    return rows;
+  },
+
+  _archivo(ext) {
+    const n = (App.empresaActiva.nombre || 'empresa').replace(/[^a-z0-9]+/gi, '_');
+    const f = new Date().toISOString().slice(0, 10);
+    return `TriklesConta_${n}_${f}.${ext}`;
+  },
+
+  // ---- Excel ----
+  excel() {
+    if (typeof XLSX === 'undefined') { alert('No se pudo cargar la librería de Excel (revisa tu conexión a internet).'); return; }
+    if (!App.empresaActiva) { UI.toast('Selecciona una empresa'); return; }
+    const x = this._ctx();
+    if (!x.asientos.length) { UI.toast('No hay asientos que exportar'); return; }
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(this.diarioAOA(x)), 'Diario');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(this.balanzaAOA(x)), 'Balanza');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(this.resultadosAOA(x)), 'Estado de Resultados');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(this.balanceAOA(x)), 'Balance General');
+    XLSX.writeFile(wb, this._archivo('xlsx'));
+    UI.toast('Excel descargado ✓');
+  },
+
+  // ---- PDF (vía impresión del navegador → "Guardar como PDF") ----
+  pdf() {
+    if (!App.empresaActiva) { UI.toast('Selecciona una empresa'); return; }
+    const x = this._ctx();
+    if (!x.asientos.length) { UI.toast('No hay asientos que exportar'); return; }
+    const money = n => '$' + (Number(n) || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const esc = UI.esc;
+
+    const tabla = (titulo, encabezados, filas) => `
+      <h2>${esc(titulo)}</h2>
+      <table><thead><tr>${encabezados.map(h => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${filas.map(r => `<tr>${r.map((c, i) => `<td class="${i === 0 ? 'l' : 'r'}">${c === '' ? '' : (typeof c === 'number' ? money(c) : esc(c))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+
+    // Diario
+    const diaFilas = [];
+    x.asientos.forEach((as, i) => as.lineas.forEach((l, j) => diaFilas.push([
+      j === 0 ? String(i + 1) : '', j === 0 ? as.fecha : '', j === 0 ? as.descripcion : '', l.cuenta + ' ' + x.nom(l.cuenta),
+      l.tipo === 'cargo' ? this.r2(l.monto) : '', l.tipo === 'abono' ? this.r2(l.monto) : ''])));
+    // Balanza
+    const bal = this.balanzaAOA(x).slice(1).filter(r => r.length).map(r => r.map((c, i) => (i <= 1 ? c : (c === '' ? '' : Number(c)))));
+    // Estados
+    const rEst = this.gruposSaldos(x);
+
+    const contenido = `
+      ${tabla('Libro Diario', ['Folio', 'Fecha', 'Concepto', 'Cuenta', 'Cargo', 'Abono'], diaFilas)}
+      ${tabla('Balanza de comprobación', ['Código', 'Cuenta', 'Sumas cargos', 'Sumas abonos', 'Saldo deudor', 'Saldo acreedor'], bal)}
+      <h2>Estado de Resultados</h2>
+      <table><tbody>
+        <tr><td class="l"><b>Ingresos</b></td><td class="r"></td></tr>
+        ${rEst.g.ingreso.map(i => `<tr><td class="l">${esc(i.cod)} ${esc(i.nombre)}</td><td class="r">${money(i.s)}</td></tr>`).join('')}
+        <tr><td class="l"><b>Total ingresos</b></td><td class="r"><b>${money(rEst.totIng)}</b></td></tr>
+        <tr><td class="l"><b>(−) Costos y gastos</b></td><td class="r"></td></tr>
+        ${rEst.g.gasto.map(i => `<tr><td class="l">${esc(i.cod)} ${esc(i.nombre)}</td><td class="r">${money(i.s)}</td></tr>`).join('')}
+        <tr><td class="l"><b>Total gastos</b></td><td class="r"><b>${money(rEst.totGas)}</b></td></tr>
+        <tr><td class="l"><b>= ${rEst.util >= 0 ? 'Utilidad' : 'Pérdida'} del ejercicio</b></td><td class="r"><b>${money(Math.abs(rEst.util))}</b></td></tr>
+      </tbody></table>
+      <h2>Estado de Situación Financiera (Balance General)</h2>
+      <table><tbody>
+        <tr><td class="l"><b>Activo</b></td><td class="r"></td></tr>
+        ${rEst.g.activo.map(i => `<tr><td class="l">${esc(i.cod)} ${esc(i.nombre)}</td><td class="r">${money(i.s)}</td></tr>`).join('')}
+        <tr><td class="l"><b>Total activo</b></td><td class="r"><b>${money(rEst.totAct)}</b></td></tr>
+        <tr><td class="l"><b>Pasivo</b></td><td class="r"></td></tr>
+        ${rEst.g.pasivo.map(i => `<tr><td class="l">${esc(i.cod)} ${esc(i.nombre)}</td><td class="r">${money(i.s)}</td></tr>`).join('') || '<tr><td class="l">—</td><td class="r"></td></tr>'}
+        <tr><td class="l"><b>Total pasivo</b></td><td class="r"><b>${money(rEst.totPas)}</b></td></tr>
+        <tr><td class="l"><b>Capital contable</b></td><td class="r"></td></tr>
+        ${rEst.g.capital.map(i => `<tr><td class="l">${esc(i.cod)} ${esc(i.nombre)}</td><td class="r">${money(i.s)}</td></tr>`).join('')}
+        <tr><td class="l">Resultado del ejercicio</td><td class="r">${money(rEst.util)}</td></tr>
+        <tr><td class="l"><b>Total capital contable</b></td><td class="r"><b>${money(rEst.capitalTotal)}</b></td></tr>
+        <tr><td class="l"><b>Pasivo + Capital</b></td><td class="r"><b>${money(rEst.totPas + rEst.capitalTotal)}</b></td></tr>
+      </tbody></table>`;
+
+    const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${esc(x.empresa.nombre)}</title>
+      <style>
+        body{font-family:Arial,Helvetica,sans-serif;color:#1a1a1a;margin:24px;font-size:12px;}
+        h1{color:#1F4E5F;margin:0 0 2px;} .sub{color:#666;margin:0 0 16px;font-size:12px;}
+        h2{color:#1F4E5F;border-bottom:2px solid #1F4E5F;padding-bottom:2px;margin:22px 0 6px;font-size:14px;}
+        table{width:100%;border-collapse:collapse;margin-bottom:8px;}
+        th{background:#F7F5F0;text-align:left;font-size:10px;text-transform:uppercase;color:#555;padding:4px 6px;border-bottom:1px solid #ccc;}
+        td{padding:3px 6px;border-bottom:1px solid #eee;} td.r{text-align:right;} td.l{text-align:left;}
+        .aviso{background:#FEF3C7;color:#92400E;padding:8px;border-radius:6px;font-size:11px;margin-bottom:14px;}
+        @media print{ .noprint{display:none;} }
+      </style></head><body>
+      <h1>${esc(x.empresa.nombre)}</h1>
+      <p class="sub">Trikles Conta · Reportes contables · ${new Date().toLocaleDateString('es-MX')}</p>
+      <div class="aviso">⚠️ Documento de apoyo generado por Trikles Conta. No sustituye a un contador profesional. Las cifras deben confirmarse con tu contador y el SAT.</div>
+      ${contenido}
+      <script>window.onload=function(){window.print();}<\/script>
+      </body></html>`;
+
+    const win = window.open('', '_blank');
+    if (!win) { alert('El navegador bloqueó la ventana. Permite las ventanas emergentes para generar el PDF.'); return; }
+    win.document.write(html);
+    win.document.close();
+  },
+};
+
+/* ============================================================================
+   6) ACCIONES  —  qué pasa al hacer clic (crear, guardar, borrar...)
+   ============================================================================ */
+const Acciones = {
+
+  // ---------- Empresas ----------
+  nuevaEmpresa() { UI.abrirModal('Nueva empresa', Vistas.formEmpresa(null)); },
+
+  editarEmpresa(id) {
+    const e = DB.empresas().find(x => x.id === id);
+    if (e) UI.abrirModal('Editar empresa', Vistas.formEmpresa(e));
+  },
+
+  guardarEmpresa(ev, id) {
+    ev.preventDefault();
+    const nombre  = document.getElementById('f_nombre').value.trim();
+    const regimen = document.getElementById('f_regimen').value;
+    const rfc     = document.getElementById('f_rfc').value.trim().toUpperCase();
+    if (!nombre) return;
+
+    let empresas = DB.empresas();
+    if (id) {
+      // Editar existente
+      const e = empresas.find(x => x.id === id);
+      Object.assign(e, { nombre, regimen, rfc });
+      DB.guardarEmpresas(empresas);
+      if (App.empresaActiva?.id === id) App.empresaActiva = e;
+      UI.toast('Empresa actualizada');
+    } else {
+      // Crear nueva + cargar catálogo base
+      const nueva = { id: DB.nuevoId(), nombre, regimen, rfc };
+      empresas.push(nueva);
+      DB.guardarEmpresas(empresas);
+
+      const cuentasBase = CATALOGO_SAT_BASE.map(c => ({ id: DB.nuevoId(), ...c }));
+      DB.guardarCuentas(nueva.id, cuentasBase);
+
+      DB.setEmpresaActiva(nueva.id);
+      App.empresaActiva = nueva;
+      UI.toast('Empresa creada con catálogo base ✓');
+    }
+    UI.cerrarModal();
+    App.render();
+  },
+
+  eliminarEmpresa(id) {
+    const e = DB.empresas().find(x => x.id === id);
+    if (!e) return;
+    if (!confirm(`¿Eliminar la empresa "${e.nombre}" y TODA su contabilidad? Esta acción no se puede deshacer.`)) return;
+
+    DB.guardarEmpresas(DB.empresas().filter(x => x.id !== id));
+    localStorage.removeItem('tc_cuentas_' + id);
+    // Si borramos la activa, elegimos otra
+    if (App.empresaActiva?.id === id) {
+      const otra = DB.empresas()[0] || null;
+      App.empresaActiva = otra;
+      DB.setEmpresaActiva(otra?.id || null);
+    }
+    UI.toast('Empresa eliminada');
+    App.render();
+  },
+
+  // ---------- Cuentas ----------
+  nuevaCuenta() { UI.abrirModal('Nueva cuenta', Vistas.formCuenta(null)); },
+
+  editarCuenta(id) {
+    const c = DB.cuentas(App.empresaActiva.id).find(x => x.id === id);
+    if (c) UI.abrirModal('Editar cuenta', Vistas.formCuenta(c));
+  },
+
+  // Al cambiar el tipo, sugiere la naturaleza correcta automáticamente
+  sugerirNaturaleza() {
+    const tipo = document.getElementById('c_tipo').value;
+    const nat = (tipo === 'activo' || tipo === 'gasto') ? 'deudora' : 'acreedora';
+    document.getElementById('c_naturaleza').value = nat;
+  },
+
+  guardarCuenta(ev, id) {
+    ev.preventDefault();
+    const codigo     = document.getElementById('c_codigo').value.trim();
+    const nombre     = document.getElementById('c_nombre').value.trim();
+    const tipo       = document.getElementById('c_tipo').value;
+    const naturaleza = document.getElementById('c_naturaleza').value;
+    if (!codigo || !nombre) return;
+
+    let cuentas = DB.cuentas(App.empresaActiva.id);
+
+    // Evitar código duplicado (excepto la misma cuenta al editar)
+    if (cuentas.some(c => c.codigo === codigo && c.id !== id)) {
+      alert('Ya existe una cuenta con el código ' + codigo + '. Usa uno distinto.');
+      return;
+    }
+
+    if (id) {
+      const c = cuentas.find(x => x.id === id);
+      Object.assign(c, { codigo, nombre, tipo, naturaleza });
+      UI.toast('Cuenta actualizada');
+    } else {
+      cuentas.push({ id: DB.nuevoId(), codigo, nombre, tipo, naturaleza });
+      UI.toast('Cuenta agregada');
+    }
+    DB.guardarCuentas(App.empresaActiva.id, cuentas);
+    UI.cerrarModal();
+    App.render();
+  },
+
+  eliminarCuenta(id) {
+    const c = DB.cuentas(App.empresaActiva.id).find(x => x.id === id);
+    if (!c) return;
+    if (!confirm(`¿Eliminar la cuenta "${c.codigo} ${c.nombre}"?`)) return;
+    DB.guardarCuentas(App.empresaActiva.id, DB.cuentas(App.empresaActiva.id).filter(x => x.id !== id));
+    UI.toast('Cuenta eliminada');
+    App.render();
+  },
+
+  // ---------- Perfil de usuario ----------
+  elegirPerfil(tipo) {
+    const nombre = (document.getElementById('bv_nombre')?.value || '').trim();
+    DB.setPerfil({
+      nombre: nombre || (tipo === 'estudiante' ? 'Estudiante' : 'Usuario'),
+      tipo,
+      modoAprendizaje: tipo === 'estudiante',   // los estudiantes arrancan con explicaciones
+    });
+    UI.toast('¡Bienvenido' + (nombre ? ', ' + nombre : '') + '!');
+    App.render();
+  },
+
+  editarPerfil() { UI.abrirModal('👤 Mi perfil', Vistas.formPerfil()); },
+
+  guardarPerfil(ev) {
+    ev.preventDefault();
+    DB.setPerfil({
+      nombre: document.getElementById('pf_nombre').value.trim() || 'Usuario',
+      tipo: document.getElementById('pf_tipo').value,
+      modoAprendizaje: document.getElementById('pf_modo').checked,
+    });
+    UI.cerrarModal();
+    UI.toast('Perfil actualizado');
+    App.render();
+  },
+
+  // ---------- Asientos (Libro Diario) ----------
+  eliminarAsiento(id) {
+    const lista = DB.asientos(App.empresaActiva.id);
+    const as = lista.find(x => x.id === id);
+    if (!as) return;
+    if (!confirm(`¿Eliminar el asiento "${as.descripcion}" del ${as.fecha}? Esta acción no se puede deshacer.`)) return;
+    DB.guardarAsientos(App.empresaActiva.id, lista.filter(x => x.id !== id));
+    UI.toast('Asiento eliminado');
+    App.render();
+  },
+
+  // ---------- Configuración / conexión con la IA ----------
+  configurar() { UI.abrirModal('⚙ Configuración', Vistas.formConfig()); },
+
+  guardarBackend() {
+    DB.setBackendUrl(document.getElementById('cfg_url').value);
+    UI.toast('URL guardada');
+  },
+
+  // Muestra un mensaje de estado dentro del modal de configuración
+  _cfgEstado(html, tipo) {
+    const colores = { ok:'bg-green-50 text-green-800 border-green-200', error:'bg-red-50 text-red-800 border-red-200', cargando:'bg-gray-50 text-gray-600 border-gray-200' };
+    document.getElementById('cfg_resultado').innerHTML =
+      `<div class="border rounded-md p-3 mt-1 ${colores[tipo] || colores.cargando}">${html}</div>`;
+  },
+
+  async probarPing() {
+    this.guardarBackend();
+    this._cfgEstado('⏳ Probando conexión con el backend...', 'cargando');
+    try {
+      const r = await IA.llamar('ping');
+      this._cfgEstado('✅ ¡Conexión correcta! El backend respondió: <strong>' + UI.esc(r.mensaje) + '</strong>', 'ok');
+    } catch (e) {
+      this._cfgEstado('❌ ' + UI.esc(e.message).replace(/\n/g, '<br>'), 'error');
+    }
+  },
+
+  async probarIA() {
+    this.guardarBackend();
+    this._cfgEstado('⏳ Preguntando a Claude (esto confirma que tu llave funciona)...', 'cargando');
+    try {
+      const r = await IA.llamar('probarIA');
+      this._cfgEstado('✅ ¡La IA respondió! Modelo: <strong>' + UI.esc(r.modelo) + '</strong> · dijo: "<strong>' + UI.esc(r.respuesta) + '</strong>"', 'ok');
+    } catch (e) {
+      this._cfgEstado('❌ ' + UI.esc(e.message).replace(/\n/g, '<br>'), 'error');
+    }
+  },
+
+  async probarAsiento() {
+    if (!App.empresaActiva) { this._cfgEstado('❌ Primero selecciona una empresa (para usar su catálogo).', 'error'); return; }
+    this.guardarBackend();
+    const ejemplo = 'Pagué $500 de gasolina en efectivo';
+    this._cfgEstado('⏳ Pidiendo a Claude el asiento de: "<em>' + ejemplo + '</em>"...', 'cargando');
+    try {
+      const hoy = new Date().toISOString().slice(0, 10);
+      const r = await IA.proponerAsiento(ejemplo, hoy);
+      const filas = (r.asiento.lineas || []).map(l =>
+        `<tr><td class="pr-3 font-mono">${UI.esc(l.cuenta)}</td><td class="pr-3">${l.tipo === 'cargo' ? 'Cargo' : 'Abono'}</td><td class="text-right">${UI.money(l.monto)}</td></tr>`
+      ).join('');
+      const cuadre = r.cuadra
+        ? '<span class="text-green-700 font-semibold">✓ Cuadra</span>'
+        : '<span class="text-red-700 font-semibold">✗ No cuadra</span>';
+      this._cfgEstado(
+        '✅ <strong>¡El motor de asientos funciona!</strong><br><em>' + UI.esc(r.asiento.descripcion || ejemplo) + '</em>' +
+        '<table class="mt-2 w-full"><tbody>' + filas + '</tbody></table>' +
+        '<div class="mt-1">Cargos: ' + UI.money(r.totalCargos) + ' · Abonos: ' + UI.money(r.totalAbonos) + ' · ' + cuadre + '</div>' +
+        '<div class="mt-1 text-gray-500">La captura completa (revisar, editar y guardar) llega en la Etapa 4.</div>', 'ok');
+    } catch (e) {
+      this._cfgEstado('❌ ' + UI.esc(e.message).replace(/\n/g, '<br>'), 'error');
+    }
+  },
+
+  // Vuelve a agregar las cuentas base del SAT que falten (no duplica ni borra las tuyas)
+  restaurarCatalogo() {
+    if (!confirm('Se agregarán las cuentas base del SAT que falten. Tus cuentas actuales NO se borran ni se modifican. ¿Continuar?')) return;
+    let cuentas = DB.cuentas(App.empresaActiva.id);
+    let agregadas = 0;
+    CATALOGO_SAT_BASE.forEach(base => {
+      if (!cuentas.some(c => c.codigo === base.codigo)) {
+        cuentas.push({ id: DB.nuevoId(), ...base });
+        agregadas++;
+      }
+    });
+    DB.guardarCuentas(App.empresaActiva.id, cuentas);
+    UI.toast(agregadas ? `${agregadas} cuentas agregadas` : 'El catálogo ya estaba completo');
+    App.render();
+  },
+};
+
+// Cerrar modal al hacer clic fuera de la tarjeta
+document.getElementById('modalFondo').addEventListener('click', (e) => {
+  if (e.target.id === 'modalFondo') UI.cerrarModal();
+});
+
+// Arrancar la app
+App.iniciar();
+</script>
+</body>
+</html>
