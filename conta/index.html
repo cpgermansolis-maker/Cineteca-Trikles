@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Trikles Conta — Contabilidad asistida por IA</title>
+<title>OAC Conta — Contabilidad asistida por IA · Trikles Company</title>
 
 <!--
   ============================================================================
@@ -58,8 +58,12 @@
 <!-- ========================= ENCABEZADO ========================= -->
 <header class="bg-marca text-white">
   <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-    <div class="text-2xl font-bold tracking-tight">Trikles&nbsp;Conta</div>
-    <div class="text-xs opacity-80 hidden sm:block">Contabilidad asistida por IA</div>
+    <!-- El logo aparece si existe un archivo logo.png en la carpeta; si no, se muestra solo el texto -->
+    <img id="brandLogo" src="logo.png" alt="OAC" class="h-10 w-auto rounded bg-white/10 p-0.5" onerror="this.remove()" />
+    <div class="leading-tight">
+      <div class="text-2xl font-bold tracking-tight">OAC&nbsp;Conta</div>
+      <div class="text-[11px] opacity-80 hidden sm:block">Organización de Apoyo al Crecimiento de las Mipymes · Trikles Company</div>
+    </div>
 
     <!-- Selector de empresa activa -->
     <div class="ml-auto flex items-center gap-2">
@@ -84,7 +88,7 @@
 <!-- Aviso legal (visible siempre, requisito del proyecto) -->
 <div class="bg-amber-100 text-amber-900 text-xs">
   <div class="max-w-6xl mx-auto px-4 py-2">
-    ⚠️ <strong>Aviso:</strong> Trikles Conta es una <strong>herramienta de apoyo</strong> y
+    ⚠️ <strong>Aviso:</strong> OAC Conta es una <strong>herramienta de apoyo</strong> y
     <strong>no sustituye a un contador profesional</strong>. Las simulaciones de impuestos son
     <strong>estimaciones</strong> que debes confirmar con tu contador y con el SAT.
   </div>
@@ -98,7 +102,7 @@
 
 <!-- ========================= PIE ========================= -->
 <footer class="max-w-6xl mx-auto px-4 py-8 text-xs text-gray-500">
-  Trikles Conta · MVP · Los datos se guardan por ahora en este navegador (localStorage).
+  OAC Conta · Organización de Apoyo al Crecimiento de las Mipymes · Trikles Company
 </footer>
 
 <!-- ========================= MODAL GENÉRICO ========================= -->
@@ -498,7 +502,8 @@ const Vistas = {
   bienvenida() {
     return `
     <div class="max-w-xl mx-auto card p-6 mt-4 text-center">
-      <div class="text-2xl font-bold text-marca">Bienvenido a Trikles Conta</div>
+      <div class="text-2xl font-bold text-marca">Bienvenido a OAC Conta</div>
+      <div class="text-xs text-gray-400 mb-3">Organización de Apoyo al Crecimiento de las Mipymes · Trikles Company</div>
       <p class="text-gray-600 mb-5 text-sm">Contabilidad asistida por inteligencia artificial. Cuéntanos quién eres y adaptamos la app a ti.</p>
       <div class="text-left mb-4">
         <label class="text-sm font-medium">¿Cómo te llamas?</label>
@@ -1842,7 +1847,7 @@ const Export = {
   _archivo(ext) {
     const n = (App.empresaActiva.nombre || 'empresa').replace(/[^a-z0-9]+/gi, '_');
     const f = new Date().toISOString().slice(0, 10);
-    return `TriklesConta_${n}_${f}.${ext}`;
+    return `OACConta_${n}_${f}.${ext}`;
   },
 
   // ---- Excel ----
@@ -1923,8 +1928,8 @@ const Export = {
         @media print{ .noprint{display:none;} }
       </style></head><body>
       <h1>${esc(x.empresa.nombre)}</h1>
-      <p class="sub">Trikles Conta · Reportes contables · ${new Date().toLocaleDateString('es-MX')}</p>
-      <div class="aviso">⚠️ Documento de apoyo generado por Trikles Conta. No sustituye a un contador profesional. Las cifras deben confirmarse con tu contador y el SAT.</div>
+      <p class="sub">OAC Conta · Organización de Apoyo al Crecimiento de las Mipymes · Trikles Company · ${new Date().toLocaleDateString('es-MX')}</p>
+      <div class="aviso">⚠️ Documento de apoyo generado por OAC Conta. No sustituye a un contador profesional. Las cifras deben confirmarse con tu contador y el SAT.</div>
       ${contenido}
       <script>window.onload=function(){window.print();}<\/script>
       </body></html>`;
