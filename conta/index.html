@@ -430,6 +430,7 @@ const App = {
 
   // Secciones de la app. Las que aún no existen muestran "Próximamente".
   secciones: [
+    { id:'panel',    etiqueta:'Panel',       listo:true  },
     { id:'empresas', etiqueta:'Empresas',   listo:true  },
     { id:'catalogo', etiqueta:'Catálogo',   listo:true  },
     { id:'capturar', etiqueta:'Capturar (IA)', listo:true  },
@@ -463,6 +464,7 @@ const App = {
     if (!empresas.find(e => e.id === idActiva)) idActiva = empresas[0]?.id || null;
     this.empresaActiva = empresas.find(e => e.id === idActiva) || null;
     DB.setEmpresaActiva(idActiva);
+    this.vista = this.empresaActiva ? 'panel' : 'empresas';
     this.render();
   },
 
@@ -519,7 +521,8 @@ const App = {
     const sec = this.secciones.find(s => s.id === this.vista);
     if (!sec.listo) { main.innerHTML = Vistas.proximamente(sec.etiqueta); return; }
 
-    if (this.vista === 'empresas') main.innerHTML = Vistas.empresas();
+    if (this.vista === 'panel') main.innerHTML = Vistas.panel();
+    else if (this.vista === 'empresas') main.innerHTML = Vistas.empresas();
     else if (this.vista === 'catalogo') main.innerHTML = Vistas.catalogo();
     else if (this.vista === 'capturar') { main.innerHTML = Vistas.capturar(); Captura.montar(); }
     else if (this.vista === 'diario') main.innerHTML = Vistas.diario();
@@ -701,7 +704,9 @@ const Vistas = {
 
   formPerfil() {
     const p = DB.perfil() || { nombre:'', tipo:'empresa', modoAprendizaje:false };
+    const u = Auth.usuario();
     return `
+      ${u ? `<div class="text-xs text-gray-500 mb-3">Sesión iniciada como <strong>${UI.esc(u.email)}</strong></div>` : ''}
       <form onsubmit="Acciones.guardarPerfil(event); return false;" class="space-y-3">
         <div>
           <label class="text-sm font-medium">Tu nombre</label>
@@ -722,7 +727,10 @@ const Vistas = {
           <button type="button" onclick="UI.cerrarModal()" class="px-4 py-2 text-sm rounded-lg border">Cancelar</button>
           <button type="submit" class="px-4 py-2 text-sm rounded-lg bg-marca text-white font-semibold hover:bg-marca2">Guardar</button>
         </div>
-      </form>`;
+      </form>
+      <div class="border-t mt-4 pt-3">
+        <button onclick="UI.cerrarModal(); Auth.logout();" class="w-full px-4 py-2 text-sm rounded-lg border border-red-200 text-red-600 hover:bg-red-50 font-semibold">Cerrar sesión</button>
+      </div>`;
   },
 
   // -------------------- CONFIGURACIÓN (conexión con la IA) --------------------
@@ -757,6 +765,108 @@ const Vistas = {
           </ol>
         </details>
       </div>`;
+  },
+
+  // -------------------- PANEL (DASHBOARD) --------------------
+  panel() {
+    if (!App.empresaActiva) return this.proximamente('Panel');
+    const emp = App.empresaActiva;
+    const cuentas = DB.cuentas(emp.id);
+    const info = {}; cuentas.forEach(c => { info[c.codigo] = c; });
+    const asientos = DB.asientos(emp.id);
+
+    // Saldos por cuenta
+    const acum = {};
+    asientos.forEach(as => as.lineas.forEach(l => {
+      const a = acum[l.cuenta] = acum[l.cuenta] || { cargos: 0, abonos: 0 };
+      if (l.tipo === 'cargo') a.cargos += Number(l.monto) || 0; else a.abonos += Number(l.monto) || 0;
+    }));
+    const saldoDe = (cod) => { const c = info[cod], a = acum[cod]; if (!a) return 0; const d = c && (c.tipo === 'activo' || c.tipo === 'gasto'); return d ? a.cargos - a.abonos : a.abonos - a.cargos; };
+
+    let ingresos = 0, gastos = 0, efectivo = 0, ivaTras = 0, ivaAcred = 0, problemas = 0;
+    cuentas.forEach(c => {
+      if (!acum[c.codigo]) return;
+      const s = saldoDe(c.codigo);
+      if (c.tipo === 'ingreso') ingresos += s;
+      if (c.tipo === 'gasto') gastos += s;
+      if (c.tipo === 'activo' && (/^101/.test(c.codigo) || /^102/.test(c.codigo))) efectivo += s;
+      const n = (c.nombre || '').toLowerCase();
+      if (n.indexOf('iva') !== -1 && (n.indexOf('traslad') !== -1 || /^20[89]/.test(c.codigo))) ivaTras += s;
+      if (n.indexOf('iva') !== -1 && (n.indexOf('acredit') !== -1 || /^11[89]/.test(c.codigo))) ivaAcred += s;
+    });
+    // Integridad
+    asientos.forEach(as => {
+      let cc = 0, aa = 0;
+      as.lineas.forEach(l => { if (!info[l.cuenta]) problemas++; if (l.tipo === 'cargo') cc += Number(l.monto) || 0; else aa += Number(l.monto) || 0; });
+      if (Math.round(cc * 100) !== Math.round(aa * 100)) problemas++;
+    });
+
+    const utilidad = ingresos - gastos;
+    const ivaNeto = ivaTras - ivaAcred;
+    const max = Math.max(ingresos, gastos, 1);
+
+    if (asientos.length === 0) {
+      return `
+      <div class="mb-4"><h1 class="text-xl font-bold">Panel</h1>
+        <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(emp.nombre)}</strong></p></div>
+      <div class="card p-10 text-center text-gray-500"><div class="text-4xl mb-2">📊</div>
+        Tu panel está listo. Captura tu primera operación y aquí verás tus números.
+        <div class="mt-3"><button onclick="App.irA('capturar')" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">Capturar operación</button></div>
+      </div>`;
+    }
+
+    const kpi = (etq, val, clase, sub) => `<div class="card p-3">
+      <div class="text-[11px] uppercase text-gray-400">${etq}</div>
+      <div class="text-lg font-bold ${clase || ''}">${UI.money(val)}</div>
+      ${sub ? `<div class="text-[11px] text-gray-400">${sub}</div>` : ''}</div>`;
+
+    const prox = Fiscal.proximas(emp.id).slice(0, 3);
+    const agenda = prox.length ? prox.map(p => {
+      const u = Fiscal.urgencia(p.dias);
+      return `<div class="flex items-center justify-between text-sm border ${u.clase} rounded-md px-2 py-1 mb-1">
+        <span>${UI.esc(p.ob.nombre)}</span><span class="font-semibold whitespace-nowrap">${u.etq}</span></div>`;
+    }).join('') : '<div class="text-xs text-gray-400">Sin obligaciones activas. Configúralas en Alertas fiscales.</div>';
+
+    return `
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+      <div><h1 class="text-xl font-bold">Panel</h1>
+        <p class="text-sm text-gray-500">Empresa: <strong>${UI.esc(emp.nombre)}</strong> · ${asientos.length} asiento(s)</p></div>
+      <button onclick="App.irA('capturar')" class="bg-marca text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-marca2">+ Capturar operación</button>
+    </div>
+
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+      ${kpi(utilidad >= 0 ? 'Utilidad' : 'Pérdida', Math.abs(utilidad), utilidad >= 0 ? 'text-green-700' : 'text-red-700', 'Ingresos − gastos')}
+      ${kpi('Efectivo y bancos', efectivo, 'text-marca')}
+      ${kpi(ivaNeto >= 0 ? 'IVA a cargo (est.)' : 'IVA a favor (est.)', Math.abs(ivaNeto), ivaNeto >= 0 ? 'text-red-700' : 'text-green-700', 'Estimado')}
+      ${kpi('Ingresos', ingresos, 'text-marca')}
+    </div>
+
+    <div class="grid lg:grid-cols-2 gap-4">
+      <div class="card p-4">
+        <h2 class="font-semibold text-sm mb-3">Ingresos vs. Gastos</h2>
+        <div class="text-xs text-gray-500 mb-1">Ingresos</div>
+        <div class="h-4 bg-gray-100 rounded mb-3"><div class="h-4 bg-green-500 rounded" style="width:${Math.round(ingresos / max * 100)}%"></div></div>
+        <div class="text-xs text-gray-500 mb-1">Gastos</div>
+        <div class="h-4 bg-gray-100 rounded"><div class="h-4 bg-amber-500 rounded" style="width:${Math.round(gastos / max * 100)}%"></div></div>
+        <div class="mt-3 text-sm">Ingresos <strong>${UI.money(ingresos)}</strong> · Gastos <strong>${UI.money(gastos)}</strong></div>
+      </div>
+
+      <div class="card p-4">
+        <h2 class="font-semibold text-sm mb-3">🔔 Próximos vencimientos</h2>
+        ${agenda}
+        <button onclick="App.irA('fiscal')" class="text-xs text-marca2 font-semibold hover:underline mt-1">Ver todas las alertas fiscales →</button>
+      </div>
+    </div>
+
+    ${problemas > 0
+      ? `<div class="border border-red-200 bg-red-50 text-red-800 rounded-lg px-3 py-2 text-sm mt-4">⚠️ Hay <strong>${problemas}</strong> punto(s) por revisar en tus asientos. <button onclick="App.irA('diario')" class="underline">Ver Libro Diario</button></div>`
+      : `<div class="border border-green-200 bg-green-50 text-green-800 rounded-lg px-3 py-2 text-sm mt-4">✅ Tu contabilidad está en orden: todos los asientos cuadran.</div>`}
+
+    <div class="flex flex-wrap gap-2 mt-4">
+      <button onclick="App.irA('estados')" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">Ver estados financieros</button>
+      <button onclick="App.irA('impuestos')" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">Simular impuestos</button>
+      <button onclick="App.irA('exportar')" class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">Exportar</button>
+    </div>`;
   },
 
   // -------------------- ETAPA 1: EMPRESAS --------------------
