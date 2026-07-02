@@ -852,7 +852,7 @@ const Vistas = {
     <div class="card p-4 mb-4">
       <label class="text-sm font-medium">¿Qué operación quieres registrar?</label>
       <textarea id="cap_desc" rows="2" class="w-full border rounded-md px-3 py-2 mt-1 text-sm"
-                placeholder="Ej. Pagué $500 de gasolina en efectivo · Vendí boletos por $1,200 y me pagaron en efectivo · Compré papelería por $348 con tarjeta"></textarea>
+                placeholder="Ej. Pagué $500 de gasolina en efectivo · Vendí boletos por $1,200 y me pagaron en efectivo · Compré papelería por $348 con tarjeta">${UI.esc(Captura._prefill || '')}</textarea>
       <div class="flex flex-wrap items-end gap-3 mt-3">
         <div>
           <label class="text-xs text-gray-500 block">Fecha</label>
@@ -1258,6 +1258,18 @@ const Vistas = {
       </div>
     </div>
 
+    <!-- Registrar el pago (guía) -->
+    <div class="card p-4 mt-4">
+      <h2 class="font-semibold text-sm mb-1">📝 Registrar el pago de impuestos</h2>
+      <p class="text-xs text-gray-500 mb-3">El <strong>ISR no se registra en cada venta</strong>: es un pago <strong>periódico</strong> (mensual/anual). Cuando pagues tus impuestos, usa estos botones y la IA arma el asiento por ti.</p>
+      <div class="flex flex-wrap gap-2">
+        ${ivaNeto > 0 ? `<button onclick="Captura.prepararPago('Pago de IVA a cargo por ${UI.money(ivaNeto)} desde bancos')" class="px-3 py-2 text-sm rounded-lg bg-marca text-white font-semibold hover:bg-marca2">Registrar pago de IVA (${UI.money(ivaNeto)})</button>` : ''}
+        ${isr > 0 ? `<button onclick="Captura.prepararPago('Pago provisional de ISR por ${UI.money(isr)} desde bancos')" class="px-3 py-2 text-sm rounded-lg bg-marca text-white font-semibold hover:bg-marca2">Registrar pago de ISR (${UI.money(isr)})</button>` : ''}
+        ${(ivaNeto <= 0 && isr <= 0) ? '<span class="text-xs text-gray-400">Cuando tengas IVA o ISR por pagar, aquí aparecerán botones para registrar el pago.</span>' : ''}
+      </div>
+      <p class="text-xs text-gray-400 mt-2">Te lleva a <strong>Capturar</strong> con la descripción lista: solo pulsa "✨ Proponer asiento con IA", revisa y guarda.</p>
+    </div>
+
     <!-- Configuración de tasas -->
     <div class="card p-4 mt-4">
       <h2 class="font-semibold text-sm mb-3">⚙️ Configuración de tasas (editable — la ley cambia)</h2>
@@ -1591,6 +1603,8 @@ const Vistas = {
 const Captura = {
   estado: null,     // { fecha, descripcion, lineas:[{cuenta, tipo, monto}] }
 
+  _prefill: '',   // texto sugerido para la descripción (lo usa la guía de impuestos)
+
   reset() {
     const hoy = new Date().toISOString().slice(0, 10);
     this.estado = { fecha: hoy, descripcion: '', lineas: [] };
@@ -1598,8 +1612,11 @@ const Captura = {
   asegurar() { if (!this.estado) this.reset(); },
   lineaVacia() { return { cuenta: '', tipo: 'cargo', monto: '' }; },
 
+  // Prepara la captura con una descripción sugerida y lleva a la pestaña Capturar.
+  prepararPago(desc) { this._prefill = desc; App.irA('capturar'); },
+
   // Se llama después de pintar la vista, para dibujar el editor con el borrador actual.
-  montar() { this.asegurar(); this.renderEditor(); },
+  montar() { this.asegurar(); this._prefill = ''; this.renderEditor(); },
 
   // ----- Pedir el asiento a la IA -----
   async pedirIA() {
@@ -1705,6 +1722,30 @@ const Captura = {
         issues.push({ n: 'error', m: `No cuadra: los cargos (${UI.money(cargos)}) deben ser iguales a los abonos (${UI.money(abonos)}). Diferencia: ${UI.money(Math.abs(cargos - abonos))}.` });
       }
     }
+
+    // 🛡️ Red de seguridad del IVA: avisa si parece venta o compra/gasto y no incluiste IVA.
+    const infoCta = {};
+    DB.cuentas(App.empresaActiva.id).forEach(c => { infoCta[c.codigo] = c; });
+    const esCuentaIVA = (cod) => {
+      const c = infoCta[cod];
+      if (!c) return false;
+      const n = (c.nombre || '').toLowerCase();
+      return n.indexOf('iva') !== -1 || /^11[89]/.test(cod) || /^20[89]/.test(cod);
+    };
+    let hayVenta = false, hayCompraGasto = false, hayIVA = false;
+    e.lineas.forEach(l => {
+      if (!l.cuenta || !(Number(l.monto) > 0)) return;
+      const c = infoCta[l.cuenta];
+      if (esCuentaIVA(l.cuenta)) hayIVA = true;
+      else if (c && c.tipo === 'ingreso') hayVenta = true;
+      else if (c && c.tipo === 'gasto' && l.tipo === 'cargo') hayCompraGasto = true;
+    });
+    if ((hayVenta || hayCompraGasto) && !hayIVA) {
+      const cual = hayVenta ? 'venta' : 'compra/gasto';
+      const cuentaIVA = hayVenta ? 'IVA trasladado' : 'IVA acreditable';
+      issues.push({ n: 'aviso', m: `Esta operación parece una ${cual} que podría llevar IVA (16%) y no lo incluiste. Si es exenta o tasa 0%, está bien; si no, agrega una línea de ${cuentaIVA} para no dejar de pagar/acreditar el impuesto.` });
+    }
+
     return issues;
   },
 
