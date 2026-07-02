@@ -72,7 +72,8 @@
     </div>
 
     <!-- Selector de empresa activa -->
-    <div class="ml-auto flex items-center gap-2">
+    <div id="headerControls" class="ml-auto flex items-center gap-2 hidden">
+      <span id="syncEstado" class="text-[11px] opacity-70 hidden md:inline"></span>
       <span class="text-xs opacity-80 hidden sm:inline">Empresa:</span>
       <select id="selectorEmpresa"
               class="text-tinta text-sm rounded-md px-2 py-1 border border-transparent"
@@ -81,6 +82,8 @@
               class="hidden text-white/90 hover:text-white text-xs rounded-md px-2 py-1 bg-white/10"></button>
       <button onclick="Acciones.configurar()" title="Configuración (conexión con la IA)"
               class="text-white/90 hover:text-white text-lg leading-none px-1">⚙</button>
+      <button onclick="Auth.logout()" title="Cerrar sesión"
+              class="text-white/90 hover:text-white text-xs rounded-md px-2 py-1 bg-white/10">Salir</button>
     </div>
   </div>
 
@@ -145,7 +148,11 @@ const DB = {
     try { const v = localStorage.getItem(clave); return v ? JSON.parse(v) : porDefecto; }
     catch (e) { return porDefecto; }
   },
-  _guardar(clave, valor) { localStorage.setItem(clave, JSON.stringify(valor)); },
+  _guardar(clave, valor) {
+    localStorage.setItem(clave, JSON.stringify(valor));
+    // Si el usuario tiene sesión, sincroniza su progreso a la nube (con retraso).
+    try { Estado.sincronizarPronto(); } catch (e) {}
+  },
 
   // ---- Empresas ----
   empresas()        { return this._leer('tc_empresas', []); },
@@ -202,6 +209,88 @@ const DB = {
 };
 
 /* ============================================================================
+   1.3) BACKEND / SESIÓN / SINCRONIZACIÓN
+   ----------------------------------------------------------------------------
+   Backend: llama al Apps Script (incluye el token de sesión).
+   Estado:  copia el progreso local ↔ nube (guarda con retraso al editar).
+   Auth:    registro, inicio de sesión y cierre de sesión.
+   ============================================================================ */
+const Backend = {
+  async llamar(accion, datos) {
+    const url = DB.backendUrl();
+    if (!url) throw new Error('El servidor no está configurado.');
+    const cuerpo = Object.assign({ accion, token: localStorage.getItem('oac_token') || '' }, datos || {});
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(cuerpo) });
+    const txt = await res.text();
+    let data;
+    try { data = JSON.parse(txt); }
+    catch (e) { throw new Error('El servidor no respondió correctamente. Revisa tu conexión a internet.'); }
+    if (!data.ok) throw new Error(data.error || 'Error del servidor.');
+    return data;
+  }
+};
+
+const Estado = {
+  _claves() { return Object.keys(localStorage).filter(k => k.indexOf('tc_') === 0); },
+  exportar() {
+    const o = {};
+    this._claves().forEach(k => { const v = localStorage.getItem(k); try { o[k] = JSON.parse(v); } catch (e) { o[k] = v; } });
+    return o;
+  },
+  importar(json) {
+    let o;
+    try { o = (typeof json === 'string') ? JSON.parse(json || '{}') : (json || {}); } catch (e) { o = {}; }
+    this.limpiarLocal();
+    Object.keys(o).forEach(k => { if (k.indexOf('tc_') === 0) localStorage.setItem(k, JSON.stringify(o[k])); });
+  },
+  limpiarLocal() { this._claves().forEach(k => localStorage.removeItem(k)); },
+
+  _timer: null,
+  sincronizarPronto() {
+    if (!Auth.logueado()) return;
+    clearTimeout(this._timer);
+    App.syncEstado('pendiente');
+    this._timer = setTimeout(() => this.sincronizar(), 1500);
+  },
+  async sincronizar() {
+    if (!Auth.logueado()) return;
+    App.syncEstado('guardando');
+    try { await Backend.llamar('guardarDatos', { datos: JSON.stringify(this.exportar()) }); App.syncEstado('guardado'); }
+    catch (e) { App.syncEstado('error'); }
+  }
+};
+
+const Auth = {
+  token() { return localStorage.getItem('oac_token') || ''; },
+  usuario() { try { return JSON.parse(localStorage.getItem('oac_user') || 'null'); } catch (e) { return null; } },
+  logueado() { return !!this.token() && !!this.usuario(); },
+
+  async registrar(nombre, email, password, tipo) {
+    const r = await Backend.llamar('registrar', { nombre, email, password, tipo });
+    this._sesion(r);
+    Estado.sincronizar(); // guarda el estado inicial en la nube
+  },
+  async login(email, password) {
+    const r = await Backend.llamar('login', { email, password });
+    this._sesion(r);
+  },
+  _sesion(r) {
+    localStorage.setItem('oac_token', r.token);
+    localStorage.setItem('oac_user', JSON.stringify(r.usuario));
+    Estado.importar(r.datos || '');   // limpia lo local y carga los datos del usuario
+    if (!DB.perfil()) DB.setPerfil({ nombre: r.usuario.nombre, tipo: r.usuario.tipo, modoAprendizaje: r.usuario.tipo === 'estudiante' });
+  },
+  logout() {
+    Estado.limpiarLocal();
+    localStorage.removeItem('oac_token');
+    localStorage.removeItem('oac_user');
+    App.empresaActiva = null;
+    App.vista = 'empresas';
+    App.render();
+  }
+};
+
+/* ============================================================================
    1.5) CAPA DE IA  (IA)
    ----------------------------------------------------------------------------
    Habla con el backend de Google Apps Script, que a su vez habla con Claude.
@@ -210,23 +299,7 @@ const DB = {
    permisos CORS especiales a Apps Script (es el truco que ya usas en Cineteca).
    ============================================================================ */
 const IA = {
-  async llamar(accion, datos) {
-    const url = DB.backendUrl();
-    if (!url) throw new Error('Primero configura la URL del backend con el botón ⚙ Configuración.');
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(Object.assign({ accion }, datos || {})),
-    });
-    const txt = await res.text();
-    let data;
-    try { data = JSON.parse(txt); }
-    catch (e) {
-      throw new Error('El backend no devolvió una respuesta válida. Revisa que la URL termine en /exec y que el acceso sea "Cualquier persona".\n\nRespuesta recibida:\n' + txt.slice(0, 300));
-    }
-    if (!data.ok) throw new Error(data.error || 'Error desconocido del backend.');
-    return data;
-  },
+  llamar(accion, datos) { return Backend.llamar(accion, datos); },
 
   // Pide a Claude un asiento de partida doble a partir de una descripción.
   proponerAsiento(descripcion, fecha) {
@@ -369,15 +442,36 @@ const App = {
     { id:'exportar', etiqueta:'Exportar',      listo:true  },
   ],
 
-  iniciar() {
-    // Recuperar empresa activa (o la primera que exista)
+  async iniciar() {
+    // Si hay sesión, trae el progreso más reciente desde la nube (para ver lo de otros dispositivos)
+    if (Auth.logueado()) {
+      try {
+        const r = await Backend.llamar('cargarDatos', {});
+        Estado.importar(r.datos || '');
+      } catch (e) {
+        if (String(e.message).indexOf('Sesión') >= 0) { Auth.logout(); return; }
+        // Otro error (p. ej. sin internet): seguimos con lo que haya en caché local.
+      }
+    }
+    this.entrar();
+  },
+
+  // Prepara la empresa activa y dibuja (tras iniciar sesión o cargar datos)
+  entrar() {
     const empresas = DB.empresas();
     let idActiva = DB.empresaActivaId();
     if (!empresas.find(e => e.id === idActiva)) idActiva = empresas[0]?.id || null;
     this.empresaActiva = empresas.find(e => e.id === idActiva) || null;
     DB.setEmpresaActiva(idActiva);
-
     this.render();
+  },
+
+  // Indicador de sincronización en el encabezado
+  syncEstado(estado) {
+    const el = document.getElementById('syncEstado');
+    if (!el) return;
+    const t = { pendiente: '•••', guardando: 'Guardando…', guardado: 'Guardado en la nube ✓', error: 'Sin guardar (sin conexión)' };
+    el.textContent = t[estado] || '';
   },
 
   cambiarEmpresa(id) {
@@ -397,13 +491,26 @@ const App = {
 
   // ---- Render principal ----
   render() {
+    const main = document.getElementById('app');
+    const ctrl = document.getElementById('headerControls');
+
+    // Puerta de entrada: sin sesión → pantalla de inicio de sesión / registro
+    if (!Auth.logueado()) {
+      if (ctrl) ctrl.classList.add('hidden');
+      document.getElementById('nav').innerHTML = '';
+      document.getElementById('alertaFiscal').innerHTML = '';
+      main.innerHTML = Vistas.auth();
+      Vistas.authTab('login');
+      return;
+    }
+    if (ctrl) ctrl.classList.remove('hidden');
+
     this.renderPerfilBadge();
     this.renderSelectorEmpresa();
     this.renderNav();
     this.renderAlertaFiscal();
-    const main = document.getElementById('app');
 
-    // Primer uso: si no hay perfil, mostramos la bienvenida y no dejamos entrar aún.
+    // Por si no hay perfil (raro tras iniciar sesión), mostramos la bienvenida.
     if (!DB.perfil()) { main.innerHTML = Vistas.bienvenida(); return; }
 
     // Si no hay empresas, forzamos la pantalla de empresas
@@ -502,6 +609,66 @@ const Vistas = {
     if (!App.modoAprendizaje()) return '';
     return `<div class="border border-sky-200 bg-sky-50 text-sky-900 rounded-lg px-3 py-2 text-sm mb-4">
       <span class="font-semibold">💡 Modo aprendizaje:</span> ${html}</div>`;
+  },
+
+  // -------------------- INICIO DE SESIÓN / REGISTRO --------------------
+  auth() {
+    return `
+    <div class="max-w-md mx-auto card p-6 mt-4">
+      <div class="text-center mb-4">
+        <div class="text-2xl font-bold text-marca">OAC Conta</div>
+        <div class="text-xs text-gray-400">Organización de Apoyo al Crecimiento de las Mipymes · Trikles Company</div>
+      </div>
+      <div class="flex mb-4 rounded-lg overflow-hidden border">
+        <button id="tabLogin" onclick="Vistas.authTab('login')" class="flex-1 py-2 text-sm font-semibold"></button>
+        <button id="tabReg" onclick="Vistas.authTab('reg')" class="flex-1 py-2 text-sm font-semibold"></button>
+      </div>
+      <div id="authBody"></div>
+      <div id="authMsg" class="mt-3"></div>
+      <p class="text-[11px] text-gray-400 mt-4 text-center">Tu progreso se guarda en la nube: entra desde tu teléfono o tu compu con el mismo correo.</p>
+    </div>`;
+  },
+
+  authTab(cual) {
+    const body = document.getElementById('authBody');
+    const tL = document.getElementById('tabLogin'), tR = document.getElementById('tabReg');
+    if (!body || !tL || !tR) return;
+    const activo = 'flex-1 py-2 text-sm font-semibold bg-marca text-white';
+    const inactivo = 'flex-1 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50';
+    tL.textContent = 'Iniciar sesión'; tR.textContent = 'Crear cuenta';
+    const inp = 'w-full border rounded-md px-3 py-2';
+    if (cual === 'reg') {
+      tR.className = activo; tL.className = inactivo;
+      body.innerHTML = `
+        <form onsubmit="Acciones.hacerRegistro(event); return false;" class="space-y-3">
+          <input id="rg_nombre" required placeholder="Tu nombre" class="${inp}" />
+          <input id="rg_email" type="email" required placeholder="Correo electrónico" class="${inp}" />
+          <input id="rg_pass" type="password" required minlength="6" placeholder="Contraseña (mínimo 6 caracteres)" class="${inp}" />
+          <div>
+            <label class="text-xs text-gray-500">Soy…</label>
+            <select id="rg_tipo" class="${inp} mt-1">
+              <option value="estudiante">🎓 Estudiante</option>
+              <option value="empresa">🏢 Empresa / Emprendedor</option>
+            </select>
+          </div>
+          <button type="submit" class="w-full bg-marca text-white py-2 rounded-lg font-semibold hover:bg-marca2">Crear cuenta</button>
+        </form>`;
+    } else {
+      tL.className = activo; tR.className = inactivo;
+      body.innerHTML = `
+        <form onsubmit="Acciones.hacerLogin(event); return false;" class="space-y-3">
+          <input id="lg_email" type="email" required placeholder="Correo electrónico" class="${inp}" />
+          <input id="lg_pass" type="password" required placeholder="Contraseña" class="${inp}" />
+          <button type="submit" class="w-full bg-marca text-white py-2 rounded-lg font-semibold hover:bg-marca2">Entrar</button>
+        </form>`;
+    }
+    document.getElementById('authMsg').innerHTML = '';
+  },
+
+  authMensaje(html, tipo) {
+    const colores = { ok: 'text-green-700', error: 'text-red-700', cargando: 'text-gray-500' };
+    const el = document.getElementById('authMsg');
+    if (el) el.innerHTML = `<div class="text-sm ${colores[tipo] || ''}">${html}</div>`;
   },
 
   // -------------------- PERFIL: bienvenida (primer uso) --------------------
@@ -2060,6 +2227,27 @@ const Acciones = {
     DB.guardarCuentas(App.empresaActiva.id, DB.cuentas(App.empresaActiva.id).filter(x => x.id !== id));
     UI.toast('Cuenta eliminada');
     App.render();
+  },
+
+  // ---------- Sesión (login / registro) ----------
+  async hacerLogin(ev) {
+    ev.preventDefault();
+    const email = document.getElementById('lg_email').value.trim();
+    const pass = document.getElementById('lg_pass').value;
+    Vistas.authMensaje('⏳ Entrando…', 'cargando');
+    try { await Auth.login(email, pass); App.entrar(); }
+    catch (e) { Vistas.authMensaje('❌ ' + UI.esc(e.message), 'error'); }
+  },
+
+  async hacerRegistro(ev) {
+    ev.preventDefault();
+    const nombre = document.getElementById('rg_nombre').value.trim();
+    const email = document.getElementById('rg_email').value.trim();
+    const pass = document.getElementById('rg_pass').value;
+    const tipo = document.getElementById('rg_tipo').value;
+    Vistas.authMensaje('⏳ Creando tu cuenta…', 'cargando');
+    try { await Auth.registrar(nombre, email, pass, tipo); App.entrar(); }
+    catch (e) { Vistas.authMensaje('❌ ' + UI.esc(e.message), 'error'); }
   },
 
   // ---------- Perfil de usuario ----------
