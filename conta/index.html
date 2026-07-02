@@ -28,29 +28,29 @@
 <!-- SheetJS: genera archivos de Excel (.xlsx) en el navegador -->
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <script>
-  // Colores de marca (paleta sobria, profesional)
+  // Colores de marca OAC (azul pizarra + azul claro + gris frío, tomados del logo)
   tailwind.config = {
     theme: {
       extend: {
         colors: {
-          marca:   '#1F4E5F', // verde petróleo (principal)
-          marca2:  '#2E8B8B', // acento
-          crema:   '#F7F5F0',
-          tinta:   '#1A1A1A',
+          marca:   '#46557A', // azul pizarra (principal)
+          marca2:  '#7C9CC0', // azul cielo (acento)
+          crema:   '#EEF2F7', // gris azulado muy claro
+          tinta:   '#1F2733',
         }
       }
     }
   }
 </script>
 <style>
-  body { background: #F7F5F0; }
+  body { background: #EEF2F7; }
   /* Pequeñas ayudas visuales */
-  .tab-activo { background:#1F4E5F; color:#fff; }
-  .card { background:#fff; border:1px solid #e7e3da; border-radius:10px; }
+  .tab-activo { background:#46557A; color:#fff; }
+  .card { background:#fff; border:1px solid #e2e6ec; border-radius:10px; }
   input, select { outline:none; }
-  input:focus, select:focus { border-color:#2E8B8B; box-shadow:0 0 0 3px rgba(46,139,139,.15); }
+  input:focus, select:focus { border-color:#7C9CC0; box-shadow:0 0 0 3px rgba(124,156,192,.22); }
   ::-webkit-scrollbar { height:8px; width:8px; }
-  ::-webkit-scrollbar-thumb { background:#cdc7b8; border-radius:8px; }
+  ::-webkit-scrollbar-thumb { background:#c3cede; border-radius:8px; }
 </style>
 </head>
 <body class="text-tinta">
@@ -58,8 +58,14 @@
 <!-- ========================= ENCABEZADO ========================= -->
 <header class="bg-marca text-white">
   <div class="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-    <!-- El logo aparece si existe un archivo logo.png en la carpeta; si no, se muestra solo el texto -->
-    <img id="brandLogo" src="logo.png" alt="OAC" class="h-10 w-auto rounded bg-white/10 p-0.5" onerror="this.remove()" />
+    <!-- Logo OAC recreado en vectorial (círculo azul + triángulo gris + forma pizarra) -->
+    <span class="bg-white rounded-lg p-1 flex items-center shadow-sm">
+      <svg viewBox="0 0 128 64" width="56" height="28" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="OAC">
+        <circle cx="34" cy="32" r="22" fill="#ADD6EF" />
+        <path d="M84,10 a22,22 0 1 0 0,44 h5 a4,4 0 0 0 4,-4 V14 a4,4 0 0 0 -4,-4 Z" fill="#54637E" />
+        <path d="M64,10 L40,54 L88,54 Z" fill="#E4E7EA" opacity="0.82" />
+      </svg>
+    </span>
     <div class="leading-tight">
       <div class="text-2xl font-bold tracking-tight">OAC&nbsp;Conta</div>
       <div class="text-[11px] opacity-80 hidden sm:block">Organización de Apoyo al Crecimiento de las Mipymes · Trikles Company</div>
