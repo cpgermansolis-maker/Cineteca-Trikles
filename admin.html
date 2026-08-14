@@ -99,7 +99,7 @@ textarea{min-height:70px;resize:vertical;}
 
 <!-- LOGIN -->
 <div id="loginView" class="login-wrap">
-  <div class="login-card">
+  <div class="login-card" id="loginCard">
     <h1>Panel Trikles</h1>
     <p class="sub serif">La casa del arte — administración</p>
     <form onsubmit="doLogin(event)">
@@ -108,6 +108,32 @@ textarea{min-height:70px;resize:vertical;}
       <button type="submit" class="btn btn-ink" id="liBtn" style="width:100%;">Entrar</button>
     </form>
     <p class="hint" id="liMsg"></p>
+    <p class="hint" style="margin-top:14px;"><a onclick="showRecovery()" style="color:var(--red);cursor:pointer;font-weight:600;">¿Olvidaste tu contraseña?</a></p>
+  </div>
+
+  <div class="login-card" id="recoveryCard" style="display:none;">
+    <h1>Recuperar acceso</h1>
+    <p class="sub serif">Restablece tu contraseña</p>
+    <label class="field">USUARIO<input id="rcUser" type="text" autocapitalize="none"></label>
+    <div class="field">MÉTODO
+      <div style="display:flex;gap:8px;">
+        <button type="button" class="tab active" id="rmKey" onclick="recMethod('key')">Llave maestra</button>
+        <button type="button" class="tab" id="rmMail" onclick="recMethod('mail')">Código por correo</button>
+      </div>
+    </div>
+    <div id="recKey">
+      <label class="field">LLAVE MAESTRA<input id="rcKey" type="password"></label>
+      <label class="field">NUEVA CONTRASEÑA<input id="rcNew1" type="password" autocomplete="new-password"></label>
+      <button class="btn btn-ink" style="width:100%;" onclick="resetWithKey()">Restablecer contraseña</button>
+    </div>
+    <div id="recMail" style="display:none;">
+      <button class="btn btn-out" style="width:100%;margin-bottom:14px;" id="rcSend" onclick="sendCode()">Enviar código a mi correo</button>
+      <label class="field">CÓDIGO (6 dígitos)<input id="rcCode" type="text" inputmode="numeric" autocomplete="one-time-code"></label>
+      <label class="field">NUEVA CONTRASEÑA<input id="rcNew2" type="password" autocomplete="new-password"></label>
+      <button class="btn btn-ink" style="width:100%;" onclick="resetWithCode()">Restablecer contraseña</button>
+    </div>
+    <p class="hint" id="rcMsg"></p>
+    <p class="hint" style="margin-top:10px;"><a onclick="hideRecovery()" style="color:var(--red);cursor:pointer;font-weight:600;">← Volver a iniciar sesión</a></p>
   </div>
 </div>
 
@@ -117,6 +143,7 @@ textarea{min-height:70px;resize:vertical;}
     <span class="brand">CINETECA TRIKLES · PANEL</span>
     <span class="who" id="whoName"></span>
     <span class="actions">
+      <button class="btn btn-out btn-sm" onclick="openSecurity()">Seguridad</button>
       <button class="btn btn-out btn-sm" onclick="openChangePass()">Cambiar contraseña</button>
       <button class="btn btn-out btn-sm" onclick="logout()">Salir</button>
     </span>
@@ -174,6 +201,20 @@ textarea{min-height:70px;resize:vertical;}
   </div>
 </div>
 
+<!-- MODAL SEGURIDAD -->
+<div class="overlay" id="securityModal">
+  <div class="modal modal-sm">
+    <button class="modal-close" onclick="closeOverlay('securityModal')" aria-label="Cerrar">✕</button>
+    <h2>Seguridad</h2>
+    <p class="hint" id="secStatus" style="margin-bottom:16px;"></p>
+    <label class="field">LLAVE MAESTRA DE RECUPERACIÓN<input id="secKey" type="password" placeholder="mínimo 6 caracteres"></label>
+    <button class="btn btn-ink" style="width:100%;margin-bottom:20px;" onclick="saveMasterKey()">Guardar llave maestra</button>
+    <label class="field">CORREO DE RECUPERACIÓN<input id="secEmail" type="email" placeholder="tucorreo@gmail.com"></label>
+    <button class="btn btn-out" style="width:100%;" onclick="saveRecoveryEmail()">Guardar correo</button>
+    <p class="hint" style="margin-top:14px;">La <b>llave maestra</b> te deja restablecer la contraseña si la olvidas, desde "¿Olvidaste tu contraseña?". Guárdala en un lugar seguro. El <b>correo</b> sirve para recibir un código de recuperación.</p>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -219,6 +260,67 @@ async function doLogin(e){
 }
 function logout(){ token=''; localStorage.removeItem(TK); localStorage.removeItem(NM); location.reload(); }
 function sessionExpired(){ toast('Sesión expirada, vuelve a entrar.','error'); setTimeout(logout, 1500); }
+
+// ===== RECUPERACIÓN DE CONTRASEÑA (pantalla de login) =====
+function showRecovery(){ document.getElementById('loginCard').style.display='none'; document.getElementById('recoveryCard').style.display='block'; const u=val('liUser'); if(u) document.getElementById('rcUser').value=u; }
+function hideRecovery(){ document.getElementById('recoveryCard').style.display='none'; document.getElementById('loginCard').style.display='block'; }
+function recMethod(m){
+  document.getElementById('recKey').style.display = m==='key'?'block':'none';
+  document.getElementById('recMail').style.display = m==='mail'?'block':'none';
+  document.getElementById('rmKey').classList.toggle('active', m==='key');
+  document.getElementById('rmMail').classList.toggle('active', m==='mail');
+}
+async function resetWithKey(){
+  const usuario=val('rcUser'), masterKey=val('rcKey'), nueva=val('rcNew1');
+  if(!usuario||!masterKey||!nueva){ document.getElementById('rcMsg').textContent='Completa todos los campos.'; return; }
+  try{ const r=await api({action:'resetWithKey', usuario, masterKey, nueva});
+    if(r.status==='ok'){ toast('Contraseña restablecida ✓ — ya puedes entrar.','success'); document.getElementById('liUser').value=usuario; document.getElementById('liPass').value=''; hideRecovery(); }
+    else document.getElementById('rcMsg').textContent=r.message||'No se pudo restablecer.';
+  }catch(err){ document.getElementById('rcMsg').textContent='Error de conexión.'; }
+}
+async function sendCode(){
+  const usuario=val('rcUser'); if(!usuario){ document.getElementById('rcMsg').textContent='Escribe tu usuario primero.'; return; }
+  const b=document.getElementById('rcSend'); b.disabled=true; b.textContent='Enviando…';
+  try{ const r=await api({action:'requestEmailCode', usuario});
+    document.getElementById('rcMsg').textContent = r.status==='ok' ? ('Código enviado a '+(r.hint||'tu correo')+'. Revisa tu bandeja (vence en 15 min).') : (r.message||'No se pudo enviar.');
+  }catch(err){ document.getElementById('rcMsg').textContent='Error de conexión.'; }
+  b.disabled=false; b.textContent='Enviar código a mi correo';
+}
+async function resetWithCode(){
+  const usuario=val('rcUser'), code=val('rcCode'), nueva=val('rcNew2');
+  if(!usuario||!code||!nueva){ document.getElementById('rcMsg').textContent='Completa todos los campos.'; return; }
+  try{ const r=await api({action:'resetWithCode', usuario, code, nueva});
+    if(r.status==='ok'){ toast('Contraseña restablecida ✓ — ya puedes entrar.','success'); document.getElementById('liUser').value=usuario; document.getElementById('liPass').value=''; hideRecovery(); }
+    else document.getElementById('rcMsg').textContent=r.message||'No se pudo restablecer.';
+  }catch(err){ document.getElementById('rcMsg').textContent='Error de conexión.'; }
+}
+
+// ===== SEGURIDAD (dentro del panel) =====
+async function openSecurity(){
+  document.getElementById('secStatus').textContent='Cargando…';
+  document.getElementById('secKey').value=''; document.getElementById('secEmail').value='';
+  openOverlay('securityModal');
+  try{ const r=await api({action:'securityInfo', token});
+    if(r.status!=='ok'){ sessionExpired(); return; }
+    document.getElementById('secStatus').innerHTML='Llave maestra: <b>'+(r.masterKeySet?'configurada ✓':'sin configurar')+'</b> · Correo de recuperación: <b>'+(r.recoveryEmail||'sin configurar')+'</b>';
+  }catch(err){ document.getElementById('secStatus').textContent='No se pudo cargar el estado.'; }
+}
+async function saveMasterKey(){
+  const masterKey=val('secKey'); if(masterKey.length<6){ toast('La llave debe tener al menos 6 caracteres.','error'); return; }
+  try{ const r=await api({action:'setMasterKey', token, masterKey});
+    if(r.status==='ok'){ toast('Llave maestra guardada ✓','success'); openSecurity(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo.','error');
+  }catch(err){ toast('Error de conexión.','error'); }
+}
+async function saveRecoveryEmail(){
+  const email=val('secEmail'); if(email.indexOf('@')<0){ toast('Correo inválido.','error'); return; }
+  try{ const r=await api({action:'setRecoveryEmail', token, email});
+    if(r.status==='ok'){ toast('Correo de recuperación guardado ✓','success'); openSecurity(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo.','error');
+  }catch(err){ toast('Error de conexión.','error'); }
+}
 
 async function enterApp(){
   document.getElementById('loginView').style.display='none';
