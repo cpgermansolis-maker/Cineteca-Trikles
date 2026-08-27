@@ -166,6 +166,7 @@ textarea{min-height:70px;resize:vertical;}
     <div class="tabs">
       <button class="tab active" id="tabCartelera" onclick="showTab('cartelera')">Cartelera</button>
       <button class="tab" id="tabDulceria" onclick="showTab('dulceria')">Dulcería</button>
+      <button class="tab" id="tabMenu" onclick="showTab('menu')">🍔 Menú</button>
       <button class="tab" id="tabFinanzas" onclick="showTab('finanzas')">Finanzas</button>
       <button class="tab" id="tabCocina" onclick="showTab('cocina')">🍳 Cocina</button>
     </div>
@@ -184,6 +185,23 @@ textarea{min-height:70px;resize:vertical;}
         <button class="btn btn-ink btn-sm" onclick="openProductForm()">+ Nuevo producto</button>
       </div>
       <div id="productsList"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+    <div id="panelMenu" style="display:none;">
+      <div class="tabs" style="margin-bottom:16px;">
+        <button class="tab active" id="subPlatillos" onclick="showSubMenu('platillos')">Platillos</button>
+        <button class="tab" id="subInsumos" onclick="showSubMenu('insumos')">Insumos</button>
+      </div>
+      <div id="subPanelPlatillos">
+        <div class="panel-head"><span class="label">Platillos · arma tu plato</span>
+          <button class="btn btn-ink btn-sm" onclick="openPlatilloForm()">+ Nuevo platillo</button></div>
+        <div id="platillosList"><div class="empty"><div class="spinner"></div></div></div>
+      </div>
+      <div id="subPanelInsumos" style="display:none;">
+        <div class="panel-head"><span class="label">Insumos · ingredientes y costos</span>
+          <button class="btn btn-ink btn-sm" onclick="openInsumoForm()">+ Nuevo insumo</button></div>
+        <div id="insumosList"><div class="empty"><div class="spinner"></div></div></div>
+      </div>
     </div>
 
     <div id="panelFinanzas" style="display:none;">
@@ -362,13 +380,173 @@ async function loadAll(){
 
 // ===== TABS =====
 function showTab(t){
-  ['Cartelera','Dulceria','Finanzas','Cocina'].forEach(x=>{
+  ['Cartelera','Dulceria','Menu','Finanzas','Cocina'].forEach(x=>{
     const tab = x.toLowerCase();
     document.getElementById('panel'+x).style.display = (tab===t)?'block':'none';
     document.getElementById('tab'+x).classList.toggle('active', tab===t);
   });
   if(t==='finanzas') loadStats();
+  if(t==='menu') loadRestaurante();
   if(t==='cocina') startCocina(); else stopCocina();
+}
+
+// ===== ADMIN MENÚ (platillos, insumos, recetas) =====
+let R_insumos=[], R_platillos=[], R_recetas=[];
+function showSubMenu(s){
+  document.getElementById('subPanelPlatillos').style.display = s==='platillos'?'block':'none';
+  document.getElementById('subPanelInsumos').style.display = s==='insumos'?'block':'none';
+  document.getElementById('subPlatillos').classList.toggle('active', s==='platillos');
+  document.getElementById('subInsumos').classList.toggle('active', s==='insumos');
+}
+async function loadRestaurante(){
+  try{ const r=await api({action:'listRestaurante', token});
+    if(r.status!=='ok'){ sessionExpired(); return; }
+    R_insumos=r.insumos||[]; R_platillos=r.platillos||[]; R_recetas=r.recetas||[];
+    renderPlatillos(); renderInsumos();
+  }catch(e){ toast('No se pudo cargar el menú.','error'); }
+}
+function renderPlatillos(){
+  const el=document.getElementById('platillosList');
+  if(!R_platillos.length){ el.innerHTML='<div class="empty">Sin platillos. Crea el primero con “+ Nuevo platillo”.</div>'; return; }
+  el.innerHTML=R_platillos.map((p,i)=>{
+    const img=getImageUrl(p.Imagen_URL);
+    const nIng=R_recetas.filter(r=>String(r.Platillo_id)===String(p.id)).length;
+    const activo=p.Activo!=='No';
+    return `<div class="row">
+      ${img?`<img class="thumb pthumb" src="${img}" onerror="this.style.visibility='hidden'">`:`<span class="thumb pthumb" style="display:flex;align-items:center;justify-content:center;font-size:26px;">${p.Emoji||'🍽️'}</span>`}
+      <div><div class="rtitle">${esc(p.Nombre||'')}</div>
+        <div class="rmeta">Base $${esc(p.PrecioBase||'0')} · ${nIng} ingredientes <span class="pill ${activo?'on':'off'}">${activo?'Activo':'Oculto'}</span></div></div>
+      <div class="ractions"><button class="btn btn-out btn-sm" onclick="openPlatilloForm(${i})">Editar</button>
+        <button class="btn btn-red btn-sm" onclick="deletePlatillo(${i})">Borrar</button></div>
+    </div>`;
+  }).join('');
+}
+function renderInsumos(){
+  const el=document.getElementById('insumosList');
+  if(!R_insumos.length){ el.innerHTML='<div class="empty">Sin insumos.</div>'; return; }
+  el.innerHTML=R_insumos.map((it,i)=>{
+    const margen=(parseFloat(it.Precio)||0)-(parseFloat(it.Costo)||0);
+    const activo=it.Activo!=='No';
+    return `<div class="row">
+      <span class="thumb pthumb" style="display:flex;align-items:center;justify-content:center;font-size:26px;">${it.Emoji||'•'}</span>
+      <div><div class="rtitle">${esc(it.Nombre||'')}</div>
+        <div class="rmeta">$${esc(it.Precio||'0')}/${esc(it.Unidad||'')} · costo $${esc(it.Costo||'0')} · margen $${margen} · paso ${esc(it.Paso||'1')} <span class="pill ${activo?'on':'off'}">${activo?'Activo':'Oculto'}</span></div></div>
+      <div class="ractions"><button class="btn btn-out btn-sm" onclick="openInsumoForm(${i})">Editar</button>
+        <button class="btn btn-red btn-sm" onclick="deleteInsumo(${i})">Borrar</button></div>
+    </div>`;
+  }).join('');
+}
+function openInsumoForm(i){
+  const it=(i==null)?{}:R_insumos[i];
+  document.getElementById('formBody').innerHTML=`
+    <h2>${i==null?'Nuevo insumo':'Editar insumo'}</h2>
+    <input type="hidden" id="i_id" value="${esc(it.id||'')}">
+    <div class="grid2">
+      <label class="field">NOMBRE<input id="i_Nombre" type="text" value="${esc(it.Nombre||'')}"></label>
+      <label class="field">EMOJI<input id="i_Emoji" type="text" value="${esc(it.Emoji||'')}" placeholder="🥚"></label>
+    </div>
+    <div class="grid2">
+      <label class="field">UNIDAD<input id="i_Unidad" type="text" value="${esc(it.Unidad||'pieza')}" placeholder="pieza, porción…"></label>
+      <label class="field">PASO (incremento)<input id="i_Paso" type="number" step="0.05" value="${esc(it.Paso||'1')}"></label>
+    </div>
+    <div class="grid2">
+      <label class="field">COSTO (MXN)<input id="i_Costo" type="number" step="0.5" value="${esc(it.Costo||'0')}"></label>
+      <label class="field">PRECIO VENTA (MXN)<input id="i_Precio" type="number" step="0.5" value="${esc(it.Precio||'0')}"></label>
+    </div>
+    <label class="field">VISIBLE<select id="i_Activo">${opt(['Sí','No'], it.Activo==='No'?'No':'Sí')}</select></label>
+    <button class="btn btn-ink" style="width:100%;" id="i_save" onclick="saveInsumo()">Guardar insumo</button>`;
+  openOverlay('formModal');
+}
+async function saveInsumo(){
+  const it={ Nombre:val('i_Nombre'), Emoji:val('i_Emoji'), Unidad:val('i_Unidad'), Paso:val('i_Paso'), Costo:val('i_Costo'), Precio:val('i_Precio'), Activo:val('i_Activo') };
+  const id=val('i_id'); if(id) it.id=id;
+  if(!it.Nombre){ toast('Ponle nombre al insumo.','error'); return; }
+  const btn=document.getElementById('i_save'); btn.disabled=true; btn.textContent='Guardando…';
+  try{ const r=await api({action:'saveInsumo', token, insumo:it});
+    if(r.status==='ok'){ toast('Insumo guardado.','success'); closeOverlay('formModal'); loadRestaurante(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else { toast(r.message||'No se pudo.','error'); btn.disabled=false; btn.textContent='Guardar insumo'; }
+  }catch(e){ toast('Error de conexión.','error'); btn.disabled=false; btn.textContent='Guardar insumo'; }
+}
+async function deleteInsumo(i){
+  const it=R_insumos[i]; if(!confirm('¿Borrar el insumo “'+(it.Nombre||'')+'”?')) return;
+  try{ const r=await api({action:'deleteInsumo', token, id:it.id});
+    if(r.status==='ok'){ toast('Insumo borrado.','success'); loadRestaurante(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired(); else toast(r.message||'No se pudo.','error');
+  }catch(e){ toast('Error de conexión.','error'); }
+}
+function openPlatilloForm(i){
+  const p=(i==null)?{}:R_platillos[i];
+  const receta = i==null?[]:R_recetas.filter(r=>String(r.Platillo_id)===String(p.id));
+  const recMap={}; receta.forEach(r=>recMap[String(r.Insumo_id)]=r);
+  const ingRows = R_insumos.map(it=>{
+    const r=recMap[String(it.id)]; const on=!!r;
+    return `<div style="display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start;padding:9px 0;border-bottom:1px solid var(--hairline);">
+      <input type="checkbox" id="rec_on_${it.id}" ${on?'checked':''} style="width:20px;height:20px;margin-top:2px;" onchange="document.getElementById('rec_f_${it.id}').style.opacity=this.checked?'1':'.35'">
+      <div>
+        <div style="font-weight:700;font-size:14px;">${it.Emoji||''} ${esc(it.Nombre)} <span style="color:var(--warm-gray);font-weight:500;font-size:12px;">$${esc(it.Precio||'0')}/${esc(it.Unidad||'')}</span></div>
+        <div id="rec_f_${it.id}" style="display:flex;gap:8px;margin-top:5px;opacity:${on?'1':'.35'};flex-wrap:wrap;align-items:center;">
+          <label style="font-size:10px;color:var(--warm-gray);">Def <input id="rec_def_${it.id}" type="number" step="0.05" value="${r?esc(r.Cantidad_Default):'1'}" style="width:58px;padding:5px;"></label>
+          <label style="font-size:10px;color:var(--warm-gray);">Mín <input id="rec_min_${it.id}" type="number" step="0.05" value="${r?esc(r.Min):'0'}" style="width:58px;padding:5px;"></label>
+          <label style="font-size:10px;color:var(--warm-gray);">Máx <input id="rec_max_${it.id}" type="number" step="0.05" value="${r?esc(r.Max):'3'}" style="width:58px;padding:5px;"></label>
+          <label style="font-size:10px;color:var(--warm-gray);display:flex;align-items:center;gap:3px;">Extra <input id="rec_ex_${it.id}" type="checkbox" ${r&&r.Es_Extra==='Sí'?'checked':''} style="width:16px;height:16px;"></label>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('formBody').innerHTML=`
+    <h2>${i==null?'Nuevo platillo':'Editar platillo'}</h2>
+    <input type="hidden" id="pl_id" value="${esc(p.id||'')}">
+    <div class="grid2">
+      <label class="field">NOMBRE<input id="pl_Nombre" type="text" value="${esc(p.Nombre||'')}"></label>
+      <label class="field">EMOJI<input id="pl_Emoji" type="text" value="${esc(p.Emoji||'')}" placeholder="🍳"></label>
+    </div>
+    <label class="field">DESCRIPCIÓN<textarea id="pl_Descripcion">${esc(p.Descripcion||'')}</textarea></label>
+    <div class="grid2">
+      <label class="field">PRECIO BASE (MXN)<input id="pl_PrecioBase" type="number" value="${esc(p.PrecioBase||'0')}"></label>
+      <label class="field">ORDEN<input id="pl_Orden" type="number" value="${esc(p.Orden||'')}"></label>
+    </div>
+    <label class="field">VISIBLE<select id="pl_Activo">${opt(['Sí','No'], p.Activo==='No'?'No':'Sí')}</select></label>
+    <label class="field" style="margin-bottom:6px;">IMAGEN DEL PLATILLO</label>
+    <div class="imgrow">
+      <img class="prev" id="pl_img_prev" src="${getImageUrl(p.Imagen_URL)||''}" onerror="this.style.visibility='hidden'">
+      <div style="flex:1;">
+        <input type="hidden" id="pl_Imagen_URL" value="${esc(p.Imagen_URL||'')}">
+        <input type="file" accept="image/*" id="pl_img_file" onchange="uploadImg('pl_img_file','pl_Imagen_URL','pl_img_prev')">
+        <input type="url" placeholder="…o pega URL" value="${esc(p.Imagen_URL||'')}" oninput="document.getElementById('pl_Imagen_URL').value=this.value;document.getElementById('pl_img_prev').src=getImageUrl(this.value);document.getElementById('pl_img_prev').style.visibility='visible';">
+      </div>
+    </div>
+    <div style="font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--warm-gray);margin:16px 0 4px;">Ingredientes de la receta</div>
+    <p class="hint" style="margin-bottom:6px;">Marca los que lleva. <b>Def</b>=cantidad normal · <b>Mín/Máx</b>=lo que el cliente puede ajustar · <b>Extra</b>=opcional (empieza en 0).</p>
+    ${ingRows||'<p class="hint">Primero crea insumos en la pestaña Insumos.</p>'}
+    <button class="btn btn-ink" style="width:100%;margin-top:16px;" id="pl_save" onclick="savePlatillo()">Guardar platillo</button>`;
+  openOverlay('formModal');
+}
+async function savePlatillo(){
+  if(uploading){ toast('Espera a que suba la imagen.','error'); return; }
+  const p={ Nombre:val('pl_Nombre'), Emoji:val('pl_Emoji'), Descripcion:val('pl_Descripcion'), PrecioBase:val('pl_PrecioBase'), Orden:val('pl_Orden'), Activo:val('pl_Activo'), Imagen_URL:val('pl_Imagen_URL') };
+  const id=val('pl_id'); if(id) p.id=id;
+  if(!p.Nombre){ toast('Ponle nombre al platillo.','error'); return; }
+  const receta=[];
+  R_insumos.forEach(it=>{
+    const on=document.getElementById('rec_on_'+it.id);
+    if(on && on.checked){
+      receta.push({ Insumo_id:it.id, Cantidad_Default:val('rec_def_'+it.id), Min:val('rec_min_'+it.id), Max:val('rec_max_'+it.id), Es_Extra: (document.getElementById('rec_ex_'+it.id)||{}).checked?'Sí':'No' });
+    }
+  });
+  const btn=document.getElementById('pl_save'); btn.disabled=true; btn.textContent='Guardando…';
+  try{ const r=await api({action:'savePlatillo', token, platillo:p, receta});
+    if(r.status==='ok'){ toast('Platillo guardado.','success'); closeOverlay('formModal'); loadRestaurante(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else { toast(r.message||'No se pudo.','error'); btn.disabled=false; btn.textContent='Guardar platillo'; }
+  }catch(e){ toast('Error de conexión.','error'); btn.disabled=false; btn.textContent='Guardar platillo'; }
+}
+async function deletePlatillo(i){
+  const p=R_platillos[i]; if(!confirm('¿Borrar el platillo “'+(p.Nombre||'')+'”? Se borra también su receta.')) return;
+  try{ const r=await api({action:'deletePlatillo', token, id:p.id});
+    if(r.status==='ok'){ toast('Platillo borrado.','success'); loadRestaurante(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired(); else toast(r.message||'No se pudo.','error');
+  }catch(e){ toast('Error de conexión.','error'); }
 }
 
 // ===== COCINA (comandas en tiempo real) =====
@@ -596,9 +774,11 @@ function openProductForm(i){
     <input type="hidden" id="p_id" value="${esc(p.id||'')}">
     <label class="field">NOMBRE<input id="p_Nombre" type="text" value="${esc(p.Nombre||'')}"></label>
     <div class="grid2">
-      <label class="field">ETIQUETA<input id="p_Tag" type="text" placeholder="COMBO, MEMBRESÍA…" value="${esc(p.Tag||'')}"></label>
-      <label class="field">NOTA<input id="p_Nota" type="text" placeholder="/ mes (opcional)" value="${esc(p.Nota||'')}"></label>
+      <label class="field">SECCIÓN<input id="p_Seccion" type="text" list="secList" placeholder="Bebidas, Snacks, Postres…" value="${esc(p.Seccion||'')}">
+        <datalist id="secList"><option value="Snacks"><option value="Bebidas"><option value="Comida"><option value="Postres"><option value="Membresías"></datalist></label>
+      <label class="field">ETIQUETA<input id="p_Tag" type="text" placeholder="COMBO, COMBO+…" value="${esc(p.Tag||'')}"></label>
     </div>
+    <label class="field">NOTA<input id="p_Nota" type="text" placeholder="/ mes (opcional)" value="${esc(p.Nota||'')}"></label>
     <label class="field">DESCRIPCIÓN<textarea id="p_Descripcion">${esc(p.Descripcion||'')}</textarea></label>
     <div class="grid2">
       <label class="field">PRECIO (MXN)<input id="p_Precio" type="number" min="0" value="${esc(p.Precio||'0')}"></label>
@@ -624,7 +804,7 @@ function openProductForm(i){
 }
 async function saveProduct(){
   if(uploading){ toast('Espera a que termine de subir la imagen.','error'); return; }
-  const p={ Nombre:val('p_Nombre'), Tag:val('p_Tag'), Nota:val('p_Nota'), Descripcion:val('p_Descripcion'),
+  const p={ Nombre:val('p_Nombre'), Tag:val('p_Tag'), Seccion:val('p_Seccion'), Nota:val('p_Nota'), Descripcion:val('p_Descripcion'),
     Precio:val('p_Precio'), Costo:val('p_Costo'), Stock:val('p_Stock'), Orden:val('p_Orden'),
     Activo:val('p_Activo'), Imagen_URL:val('p_Imagen_URL') };
   const id=val('p_id'); if(id) p.id=id;

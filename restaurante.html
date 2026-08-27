@@ -238,12 +238,18 @@ function renderMenu(){
   renderProducts();
   renderCartFab();
 }
+const SEC_EMOJI={ 'bebidas':'🥤','snacks':'🍿','comida':'🍔','postres':'🍰','dulces':'🍬','vinateria':'🍺' };
 function renderProducts(){
   const sec=document.getElementById('prodSection');
   if(!PRODUCTOS.length){ sec.innerHTML=''; return; }
-  sec.innerHTML = `<div class="prod-title">🥤 Bebidas y antojos</div>
-    <div class="prod-sub">Agrégalas a tu mismo pedido.</div>
-    <div class="prods">${PRODUCTOS.map(prodCard).join('')}</div>`;
+  // agrupar por Sección (respeta orden de aparición)
+  const groups={}, order=[];
+  PRODUCTOS.forEach(p=>{ const s=(p.Seccion||'').trim()||'Bebidas y antojos';
+    if(!groups[s]){ groups[s]=[]; order.push(s); } groups[s].push(p); });
+  sec.innerHTML = order.map(s=>{
+    const em = SEC_EMOJI[s.toLowerCase()] || '🥤';
+    return `<div class="prod-title">${em} ${esc(s)}</div><div class="prods">${groups[s].map(prodCard).join('')}</div>`;
+  }).join('');
 }
 function prodCard(p){
   const q = prodQty[p.id]||0;
