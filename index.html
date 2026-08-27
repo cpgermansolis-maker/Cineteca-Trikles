@@ -792,13 +792,20 @@ async function confirmOrder() {
   const name = val('oName'), phone = val('oPhone');
   if (!name || !phone) { toast('Completa tu nombre y WhatsApp para el pedido.', 'error'); return; }
   const n = cartCount(), total = cartTotal();
-  const code = 'DUL-' + Math.floor(1000 + Math.random() * 9000);
-  const articulos = SHOP.filter(p => cart[p.id]).map(p => `${p.name} x${cart[p.id]}`).join('; ');
+  const articulos = SHOP.filter(p => cart[p.id]).map(p => `${cart[p.id]} ${p.name}`).join(', ');
   const btn = document.getElementById('oSubmit');
   if (btn) { btn.disabled = true; btn.textContent = 'Enviando…'; }
+  let folio = '';
   try {
-    await apiPost({ sheet: 'Pedidos', Codigo: code, Nombre: name, Telefono: phone, Email: '', Articulos: articulos, Total: String(total), Estado: 'Pendiente' });
-  } catch (err) { console.error('Pedido no registrado en backend:', err); }
+    // Pedido unificado: cae en Comandas y aparece en la pantalla de Cocina en vivo
+    const r = await apiPost({ sheet: 'Comandas', Nombre: name, Detalle: articulos, Total: String(total), Notas: 'WhatsApp: ' + phone });
+    if (r && r.status === 'ok') folio = r.folio || '';
+    else throw new Error();
+  } catch (err) {
+    if (btn) { btn.disabled = false; btn.textContent = 'CONFIRMAR PEDIDO'; }
+    toast('No se pudo enviar el pedido. Intenta de nuevo.', 'error');
+    return;
+  }
   document.getElementById('orderModal').dataset.placed = '1';
   document.getElementById('orderBody').innerHTML = `
     <div class="confirm">
@@ -806,8 +813,8 @@ async function confirmOrder() {
       <div class="confirm-serif">Buen provecho</div>
       <h2 class="confirm-h2">Pedido confirmado</h2>
       <p class="confirm-sub">${n === 1 ? '1 artículo' : n + ' artículos'} · Total $${total}</p>
-      <div class="code-box"><div class="code-label">TU CÓDIGO</div><div class="code-val">${code}</div></div>
-      <p class="confirm-note">Muéstralo en dulcería al llegar a tu función.</p>
+      <div class="code-box"><div class="code-label">TU FOLIO</div><div class="code-val">${esc(folio)}</div></div>
+      <p class="confirm-note">Pasa a la caja a pagar y recoge tu pedido con este folio.</p>
     </div>`;
 }
 

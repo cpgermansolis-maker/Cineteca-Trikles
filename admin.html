@@ -473,6 +473,7 @@ function renderStats(s){
     <div class="kpis">
       <div class="kpi"><div class="lbl">Cartelera</div><div class="num">${money(s.ventasCartelera)}</div><div class="sub">${plur(s.nReservas,'reserva confirmada','reservas confirmadas')}</div></div>
       <div class="kpi"><div class="lbl">Dulcería</div><div class="num">${money(s.ventasTienda)}</div><div class="sub">${plur(s.nPedidos,'pedido','pedidos')} · ganancia ${money(s.gananciaTienda)}</div></div>
+      <div class="kpi"><div class="lbl">Restaurante / Tienda</div><div class="num">${money(s.ventasComandas||0)}</div><div class="sub">${plur(s.nComandas||0,'comanda','comandas')} en vivo</div></div>
       <div class="kpi"><div class="lbl">Experiencias (por confirmar)</div><div class="num">${money(s.experienciasTotal)}</div><div class="sub">${plur(s.nExperiencias,'solicitud','solicitudes')}</div></div>
     </div>
     ${rows?`<div class="panel-head" style="margin-top:8px;"><span class="label">Dulcería · detalle por producto</span></div>

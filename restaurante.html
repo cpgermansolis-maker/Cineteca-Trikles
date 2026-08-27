@@ -60,6 +60,21 @@ button{font-family:inherit;cursor:pointer;}
 .dish .dp{font-size:15px;font-weight:800;color:var(--red);margin-top:10px;}
 .dish .dp small{color:var(--warm-gray);font-weight:600;}
 
+/* ===== PRODUCTOS (bebidas y antojos) ===== */
+.prod-title{font-size:22px;font-weight:900;text-transform:uppercase;letter-spacing:-.01em;margin:34px 0 4px;border-top:1px solid var(--hairline);padding-top:20px;}
+.prod-sub{font-size:14px;color:var(--warm-gray);margin-bottom:16px;}
+.prods{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;}
+.prod{background:var(--surface);border:1px solid var(--hairline);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px;}
+.prod.on{border-color:var(--red);box-shadow:0 0 0 2px rgba(200,49,27,.15);}
+.prod .pe{font-size:34px;}
+.prod .pn{font-size:16px;font-weight:800;text-transform:uppercase;line-height:1.1;}
+.prod .pt{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--warm-gray);text-transform:uppercase;}
+.prod .pfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;}
+.prod .pp{font-size:18px;font-weight:900;}
+.prod .padd{padding:12px 16px;font-size:13px;border-radius:12px;text-transform:uppercase;letter-spacing:.04em;}
+.prod .stepper .step{width:44px;height:44px;font-size:22px;}
+.prod .qty .qn{font-size:19px;}
+
 /* ===== ARMADOR ===== */
 .builder-head{display:flex;align-items:center;gap:14px;margin-bottom:8px;}
 .builder-head .be{font-size:44px;}
@@ -137,6 +152,7 @@ button{font-family:inherit;cursor:pointer;}
     <div class="h-title">¿Qué se te antoja?</div>
     <div class="h-sub">Elige tu platillo y ármalo a tu gusto. Tú decides los ingredientes.</div>
     <div class="dishes" id="dishes"><div class="loading"><div class="spin"></div>Cargando menú…</div></div>
+    <div id="prodSection"></div>
   </div>
 
   <!-- ARMADOR -->
@@ -167,6 +183,8 @@ button{font-family:inherit;cursor:pointer;}
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw3skEAAbt6skxAiSon39EHPOdEAw6gXcUbtFMxCfNHNL-OqisUgD-DQ5fGTm_1FGq-/exec';
 
 let MENU = [];
+let PRODUCTOS = [];   // bebidas/antojos ya registrados (tienda)
+let prodQty = {};     // id -> cantidad
 let cart = [];        // [{id,nombre,emoji,base,lines:[{nombre,qty,unidad,emoji,precio}],notas,total}]
 let building = null;  // {p, qty:{insumoId:num}, notas}
 let resetTimer = null;
@@ -201,13 +219,13 @@ async function loadMenu(){
     const r = await (await fetch(u.toString())).json();
     if(r.status!=='ok') throw new Error();
     MENU = r.platillos || [];
+    PRODUCTOS = (r.productos||[]).filter(p=>!/membres/i.test(p.Tag||''));
     renderMenu();
   }catch(e){ document.getElementById('dishes').innerHTML='<div class="loading">No se pudo cargar el menú. Revisa la conexión.</div>'; }
 }
 function renderMenu(){
   const el=document.getElementById('dishes');
-  if(!MENU.length){ el.innerHTML='<div class="loading">Aún no hay platillos disponibles.</div>'; return; }
-  el.innerHTML = MENU.map((p,i)=>{
+  el.innerHTML = MENU.length ? MENU.map((p,i)=>{
     const img=getImageUrl(p.Imagen_URL);
     const min = platilloDesde(p);
     return `<button class="dish" onclick="openBuilder(${i})">
@@ -216,8 +234,44 @@ function renderMenu(){
       <div class="dd">${esc(p.Descripcion||'')}</div>
       <div class="dp">desde ${money(min)} <small>· ármalo</small></div>
     </button>`;
-  }).join('');
+  }).join('') : '';
+  renderProducts();
+  renderCartFab();
 }
+function renderProducts(){
+  const sec=document.getElementById('prodSection');
+  if(!PRODUCTOS.length){ sec.innerHTML=''; return; }
+  sec.innerHTML = `<div class="prod-title">🥤 Bebidas y antojos</div>
+    <div class="prod-sub">Agrégalas a tu mismo pedido.</div>
+    <div class="prods">${PRODUCTOS.map(prodCard).join('')}</div>`;
+}
+function prodCard(p){
+  const q = prodQty[p.id]||0;
+  const control = q===0
+    ? `<button class="btn3d yellow padd" onclick="changeProd('${p.id}',1)">Agregar +</button>`
+    : `<div class="stepper">
+         <button class="btn3d red step" onclick="changeProd('${p.id}',-1)">−</button>
+         <div class="qty" id="pq_${p.id}"><span class="qn">${q}</span></div>
+         <button class="btn3d step" onclick="changeProd('${p.id}',1)">+</button>
+       </div>`;
+  return `<div class="prod ${q>0?'on':''}" id="prod_${p.id}">
+    <div class="pe">${p.Emoji||'🥤'}</div>
+    <div class="pt">${esc(p.Tag||'')}</div>
+    <div class="pn">${esc(p.Nombre)}</div>
+    <div class="pfoot"><span class="pp">${money(parseFloat(p.Precio)||0)}${p.Nota?` <small style="font-size:11px;color:var(--warm-gray);font-weight:600;">${esc(p.Nota)}</small>`:''}</span>${control}</div>
+  </div>`;
+}
+function changeProd(id, dir){
+  const p = PRODUCTOS.find(x=>x.id===id); if(!p) return;
+  let q = (prodQty[id]||0) + dir; if(q<0) q=0;
+  if(q<=0) delete prodQty[id]; else prodQty[id]=q;
+  renderProducts();
+  renderCartFab();
+}
+function productsTotal(){ return PRODUCTOS.reduce((a,p)=> a + (prodQty[p.id]||0)*(parseFloat(p.Precio)||0), 0); }
+function selectedProducts(){ return PRODUCTOS.filter(p=>(prodQty[p.id]||0)>0); }
+function grandTotal(){ return cart.reduce((a,c)=>a+c.total,0) + productsTotal(); }
+function itemsCount(){ return cart.length + selectedProducts().reduce((a,p)=>a+prodQty[p.id],0); }
 function platilloDesde(p){
   // precio mínimo = base + ingredientes obligatorios en su cantidad mínima
   let t = parseFloat(p.PrecioBase)||0;
@@ -297,14 +351,15 @@ function addToCart(){
 // ===== PEDIDO =====
 function renderCartFab(){
   const fab=document.getElementById('cartFab');
-  if(cart.length && document.getElementById('vCart').classList.contains('hidden') && document.getElementById('vDone').classList.contains('hidden')){
-    const n=cart.length, tot=cart.reduce((a,c)=>a+c.total,0);
-    document.getElementById('cartFabText').textContent = `🧾 ${n} platillo${n>1?'s':''} · ${money(tot)}`;
+  const has = cart.length>0 || selectedProducts().length>0;
+  if(has && document.getElementById('vCart').classList.contains('hidden') && document.getElementById('vDone').classList.contains('hidden')){
+    const n=itemsCount();
+    document.getElementById('cartFabText').textContent = `🧾 ${n} artículo${n>1?'s':''} · ${money(grandTotal())}`;
     fab.classList.add('show');
   } else fab.classList.remove('show');
 }
 function goCart(){
-  if(!cart.length){ toast('Tu pedido está vacío'); return; }
+  if(!cart.length && !selectedProducts().length){ toast('Tu pedido está vacío'); return; }
   const rows = cart.map((c,i)=>{
     const det = c.lines.map(l=>`${fmtQty(l.qty)} ${esc(l.nombre)}`).join(', ');
     return `<div class="cart-item">
@@ -314,11 +369,19 @@ function goCart(){
       <button class="ci-del" onclick="removeItem(${i})">Quitar</button>
     </div>`;
   }).join('');
-  const tot = cart.reduce((a,c)=>a+c.total,0);
+  const prodRows = selectedProducts().map(p=>`<div class="cart-item">
+      <div class="ci-top"><div class="ci-n">${p.Emoji||'🥤'} ${esc(p.Nombre)}</div><div class="ci-p">${money((prodQty[p.id]||0)*(parseFloat(p.Precio)||0))}</div></div>
+      <div class="stepper" style="margin-top:8px;">
+        <button class="btn3d red step" onclick="changeProd('${p.id}',-1);goCart()">−</button>
+        <div class="qty"><span class="qn">${prodQty[p.id]}</span></div>
+        <button class="btn3d step" onclick="changeProd('${p.id}',1);goCart()">+</button>
+      </div>
+    </div>`).join('');
+  const tot = grandTotal();
   document.getElementById('vCart').innerHTML = `
     <div class="h-title">Tu pedido</div>
     <div class="h-sub">Revisa y confirma. Pagas en la caja al recoger.</div>
-    <div style="margin-top:22px;">${rows}
+    <div style="margin-top:22px;">${rows}${prodRows}
       <div class="grand"><div class="gl">Total</div><div class="gv">${money(tot)}</div></div>
     </div>
     <label style="font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--warm-gray);">Tu nombre
@@ -331,16 +394,18 @@ function goCart(){
   document.getElementById('builderBar').classList.add('hidden');
   renderCartFab();
 }
-function removeItem(i){ cart.splice(i,1); if(cart.length) goCart(); else goMenu(); renderCartFab(); }
+function removeItem(i){ cart.splice(i,1); if(cart.length||selectedProducts().length) goCart(); else goMenu(); renderCartFab(); }
 
 async function confirmOrder(){
   const nombre = (document.getElementById('cName').value||'').trim();
   if(!nombre){ toast('Escribe tu nombre para llamarte 🙂'); document.getElementById('cName').focus(); return; }
-  const tot = cart.reduce((a,c)=>a+c.total,0);
-  const detalle = cart.map(c=>{
+  const tot = grandTotal();
+  const platosDet = cart.map(c=>{
     const det = c.lines.map(l=>`${fmtQty(l.qty)} ${l.nombre}`).join(', ');
     return `${c.nombre} (${det})${c.notas?` [${c.notas}]`:''} — ${money(c.total)}`;
-  }).join('  ||  ');
+  });
+  const prodsDet = selectedProducts().map(p=>`${prodQty[p.id]} ${p.Nombre} — ${money((prodQty[p.id]||0)*(parseFloat(p.Precio)||0))}`);
+  const detalle = platosDet.concat(prodsDet).join('  ||  ');
   const btn=document.getElementById('btnConfirm'); btn.disabled=true; btn.textContent='Enviando…';
   try{
     const r = await (await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
@@ -351,7 +416,7 @@ async function confirmOrder(){
 }
 
 function showDone(folio, total, nombre){
-  cart=[]; renderCartFab();
+  cart=[]; prodQty={}; renderCartFab();
   document.getElementById('vDone').innerHTML = `
     <div class="done">
       <div class="em">🍳✨</div>
@@ -374,7 +439,7 @@ function showView(id){
   document.getElementById('btnBack').classList.toggle('hidden', id==='vMenu' || id==='vDone');
   window.scrollTo({top:0,behavior:'smooth'});
 }
-function goMenu(){ building=null; document.getElementById('builderBar').classList.add('hidden'); showView('vMenu'); renderCartFab(); }
+function goMenu(){ building=null; document.getElementById('builderBar').classList.add('hidden'); showView('vMenu'); renderProducts(); renderCartFab(); }
 
 // reinicio por inactividad (kiosco): 90s sin tocar → vuelve al menú
 function bumpIdle(){ clearTimeout(window._idle); window._idle=setTimeout(()=>{ if(!document.getElementById('vMenu').classList.contains('hidden')) return; if(cart.length) return; goMenu(); }, 90000); }
