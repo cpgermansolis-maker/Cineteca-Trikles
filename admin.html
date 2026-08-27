@@ -13,7 +13,7 @@
 <style>
 :root{
   --cream:#F6F3EC; --surface:#FFFDF8; --ink:#171511; --red:#C8311B; --yellow:#F2B705;
-  --warm-gray:#877F70; --mid-gray:#5C564A; --hairline:#E0D9C9; --input-border:#D6CFBE; --beige:#ECE7DB;
+  --warm-gray:#877F70; --mid-gray:#5C564A; --hairline:#E0D9C9; --input-border:#D6CFBE; --beige:#ECE7DB; --green:#2f7d4f;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'Archivo',sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;line-height:1.5;min-height:100vh;}
@@ -91,6 +91,20 @@ textarea{min-height:70px;resize:vertical;}
 .ftable{width:100%;border-collapse:collapse;font-size:14px;margin-top:4px;}
 .ftable th{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--warm-gray);text-align:left;padding:10px 8px;border-bottom:1px solid var(--ink);}
 .ftable td{padding:10px 8px;border-bottom:1px solid var(--hairline);}
+/* ===== COCINA (KDS) ===== */
+.kds{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.kds-col h3{font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--warm-gray);margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid var(--ink);}
+.kds-col h3 .cnt{display:inline-block;min-width:22px;text-align:center;color:#fff;background:var(--red);border-radius:11px;font-size:11px;padding:1px 7px;margin-left:4px;}
+.cmd{background:var(--surface);border:1px solid var(--hairline);border-radius:12px;padding:14px;margin-bottom:12px;border-left:5px solid var(--hairline);}
+.cmd.nuevo{border-left-color:var(--red);}
+.cmd.prep{border-left-color:var(--yellow);}
+.cmd.listo{border-left-color:var(--green);}
+.cmd .cf{font-size:22px;font-weight:900;}
+.cmd .ctot{font-size:18px;font-weight:800;}
+.cmd .cmeta{font-size:12px;color:var(--warm-gray);margin-top:2px;}
+.cmd .cdet{font-size:14px;margin:8px 0;line-height:1.5;}
+.cmd .cnotas{font-size:13px;color:var(--red);font-weight:700;margin-bottom:6px;}
+@media(max-width:760px){ .kds{grid-template-columns:1fr;} }
 @media(max-width:640px){
   .kpis{grid-template-columns:1fr;} .grid2{grid-template-columns:1fr;} .row{grid-template-columns:56px 1fr;} .row .ractions{grid-column:1 / -1;} .modal{padding:28px 20px;} }
 </style>
@@ -153,6 +167,7 @@ textarea{min-height:70px;resize:vertical;}
       <button class="tab active" id="tabCartelera" onclick="showTab('cartelera')">Cartelera</button>
       <button class="tab" id="tabDulceria" onclick="showTab('dulceria')">Dulcería</button>
       <button class="tab" id="tabFinanzas" onclick="showTab('finanzas')">Finanzas</button>
+      <button class="tab" id="tabCocina" onclick="showTab('cocina')">🍳 Cocina</button>
     </div>
 
     <div id="panelCartelera">
@@ -177,6 +192,14 @@ textarea{min-height:70px;resize:vertical;}
         <button class="btn btn-out btn-sm" onclick="loadStats()">Actualizar</button>
       </div>
       <div id="statsBody"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+    <div id="panelCocina" style="display:none;">
+      <div class="panel-head">
+        <span class="label">Cocina · comandas en vivo <span id="cocinaLive" style="color:var(--green);font-weight:800;margin-left:6px;"></span></span>
+        <button class="btn btn-out btn-sm" onclick="pollComandas(true)">Actualizar</button>
+      </div>
+      <div id="kds"><div class="empty"><div class="spinner"></div></div></div>
     </div>
   </div>
 </div>
@@ -339,12 +362,86 @@ async function loadAll(){
 
 // ===== TABS =====
 function showTab(t){
-  ['Cartelera','Dulceria','Finanzas'].forEach(x=>{
+  ['Cartelera','Dulceria','Finanzas','Cocina'].forEach(x=>{
     const tab = x.toLowerCase();
     document.getElementById('panel'+x).style.display = (tab===t)?'block':'none';
     document.getElementById('tab'+x).classList.toggle('active', tab===t);
   });
   if(t==='finanzas') loadStats();
+  if(t==='cocina') startCocina(); else stopCocina();
+}
+
+// ===== COCINA (comandas en tiempo real) =====
+let comandaTimer=null, lastFolios=new Set(), cocinaFirst=true, audioCtx=null, lastComandas=[];
+function startCocina(){
+  cocinaFirst=true;
+  try{ audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(_){}
+  pollComandas(true);
+  if(comandaTimer) clearInterval(comandaTimer);
+  comandaTimer=setInterval(()=>pollComandas(false), 7000);
+  document.getElementById('cocinaLive').textContent='● EN VIVO';
+}
+function stopCocina(){ if(comandaTimer){ clearInterval(comandaTimer); comandaTimer=null; } document.getElementById('cocinaLive').textContent=''; }
+async function pollComandas(showSpinner){
+  if(showSpinner) document.getElementById('kds').innerHTML='<div class="empty"><div class="spinner"></div></div>';
+  try{
+    const r=await api({action:'comandas', token});
+    if(r.status!=='ok'){ if(/sesión/i.test(r.message||'')){ stopCocina(); sessionExpired(); } return; }
+    renderComandas(r.comandas||[]);
+  }catch(err){ /* silencioso durante el sondeo */ }
+}
+function renderComandas(list){
+  lastComandas=list;
+  const activos=list.filter(c=>c.Estado!=='Entregado');
+  const nuevos=new Set(activos.filter(c=>c.Estado==='Nuevo').map(c=>c.Folio));
+  let hayNueva=false;
+  if(!cocinaFirst){ nuevos.forEach(f=>{ if(!lastFolios.has(f)) hayNueva=true; }); }
+  lastFolios=nuevos; cocinaFirst=false;
+  const cols=[
+    {k:'Nuevo', t:'Nuevas', cls:'nuevo', next:'Preparando', btn:'▶ Preparar', bcls:'btn-red'},
+    {k:'Preparando', t:'Preparando', cls:'prep', next:'Listo', btn:'✓ Marcar listo', bcls:'btn-ink'},
+    {k:'Listo', t:'Listas', cls:'listo', next:'Entregado', btn:'Entregado', bcls:'btn-out'}
+  ];
+  const anyActive = activos.length>0;
+  document.getElementById('kds').innerHTML = anyActive ? ('<div class="kds">'+cols.map(col=>{
+    const items=activos.filter(c=>c.Estado===col.k);
+    return '<div class="kds-col"><h3>'+col.t+(items.length?' <span class="cnt">'+items.length+'</span>':'')+'</h3>'+
+      (items.length? items.map(c=>cmdCard(c,col)).join('') : '<div class="hint" style="padding:6px 0;">Sin comandas.</div>')+'</div>';
+  }).join('')+'</div>') : '<div class="empty">Sin comandas por ahora. Aparecerán aquí en cuanto un cliente ordene. 🍳</div>';
+  if(hayNueva) alertNueva();
+}
+function cmdCard(c,col){
+  const hora=(c.Fecha||'').slice(11);
+  return '<div class="cmd '+col.cls+'">'+
+    '<div style="display:flex;justify-content:space-between;align-items:baseline;"><span class="cf">'+esc(c.Folio)+'</span><span class="ctot">$'+esc(c.Total)+'</span></div>'+
+    '<div class="cmeta">'+esc(c.Nombre||'')+(hora?(' · '+esc(hora)):'')+'</div>'+
+    '<div class="cdet">'+esc(c.Detalle||'')+'</div>'+
+    (c.Notas?('<div class="cnotas">📝 '+esc(c.Notas)+'</div>'):'')+
+    '<button class="btn '+col.bcls+' btn-sm" style="width:100%;" onclick="setEstado(\''+esc(c.Folio)+'\',\''+col.next+'\')">'+col.btn+'</button>'+
+  '</div>';
+}
+async function setEstado(folio, estado){
+  // actualización optimista: refleja al instante
+  const it=lastComandas.find(c=>String(c.Folio)===String(folio));
+  if(it){ it.Estado=estado; renderComandas(lastComandas); }
+  try{ const r=await api({action:'setComandaEstado', token, folio, estado});
+    if(r.status!=='ok'){ if(/sesión/i.test(r.message||'')) sessionExpired(); else { toast(r.message||'No se pudo.','error'); pollComandas(false); } }
+  }catch(err){ toast('Error de conexión.','error'); pollComandas(false); }
+}
+function alertNueva(){ beep(); toast('🔔 ¡Nueva comanda!','success'); try{ navigator.vibrate && navigator.vibrate([90,50,90]); }catch(_){}}
+function beep(){
+  try{
+    audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    [880,1175].forEach((f,i)=>{
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+      o.type='sine'; o.frequency.value=f; o.connect(g); g.connect(audioCtx.destination);
+      const t0=audioCtx.currentTime + i*0.18;
+      g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.3, t0+0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0+0.32);
+      o.start(t0); o.stop(t0+0.34);
+    });
+  }catch(_){}
 }
 
 // ===== FINANZAS =====
