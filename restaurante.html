@@ -443,6 +443,8 @@ function showDone(folio, total, nombre){
 function showView(id){
   ['vMenu','vBuilder','vCart','vDone'].forEach(v=>document.getElementById(v).classList.toggle('hidden', v!==id));
   document.getElementById('btnBack').classList.toggle('hidden', id==='vMenu' || id==='vDone');
+  // La barra "Agregar al pedido" SOLO existe mientras armas un platillo
+  document.getElementById('builderBar').classList.toggle('hidden', id!=='vBuilder');
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function goMenu(){ building=null; document.getElementById('builderBar').classList.add('hidden'); showView('vMenu'); renderProducts(); renderCartFab(); }

@@ -550,7 +550,7 @@ async function deletePlatillo(i){
 }
 
 // ===== COCINA (comandas en tiempo real) =====
-let comandaTimer=null, lastFolios=new Set(), cocinaFirst=true, audioCtx=null, lastComandas=[];
+let comandaTimer=null, lastFolios=new Set(), cocinaFirst=true, audioCtx=null, lastComandas=[], pendingEstados={};
 function startCocina(){
   cocinaFirst=true;
   try{ audioCtx = audioCtx || new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }catch(_){}
@@ -569,6 +569,11 @@ async function pollComandas(showSpinner){
   }catch(err){ /* silencioso durante el sondeo */ }
 }
 function renderComandas(list){
+  // conserva los cambios de estado que aún no confirma el servidor (evita el "rebote" del sondeo)
+  list.forEach(c=>{
+    const pend=pendingEstados[c.Folio];
+    if(pend!==undefined){ if(c.Estado===pend) delete pendingEstados[c.Folio]; else c.Estado=pend; }
+  });
   lastComandas=list;
   const activos=list.filter(c=>c.Estado!=='Entregado');
   const nuevos=new Set(activos.filter(c=>c.Estado==='Nuevo').map(c=>c.Folio));
@@ -599,12 +604,15 @@ function cmdCard(c,col){
   '</div>';
 }
 async function setEstado(folio, estado){
-  // actualización optimista: refleja al instante
+  // actualización optimista + registro pendiente (el sondeo no puede revertirlo hasta que el servidor confirme)
+  pendingEstados[folio]=estado;
   const it=lastComandas.find(c=>String(c.Folio)===String(folio));
-  if(it){ it.Estado=estado; renderComandas(lastComandas); }
+  if(it) it.Estado=estado;
+  renderComandas(lastComandas);
   try{ const r=await api({action:'setComandaEstado', token, folio, estado});
-    if(r.status!=='ok'){ if(/sesión/i.test(r.message||'')) sessionExpired(); else { toast(r.message||'No se pudo.','error'); pollComandas(false); } }
-  }catch(err){ toast('Error de conexión.','error'); pollComandas(false); }
+    if(r.status==='ok'){ pollComandas(false); }
+    else { delete pendingEstados[folio]; if(/sesión/i.test(r.message||'')) sessionExpired(); else { toast(r.message||'No se pudo.','error'); pollComandas(false); } }
+  }catch(err){ delete pendingEstados[folio]; toast('Error de conexión.','error'); pollComandas(false); }
 }
 function alertNueva(){ beep(); toast('🔔 ¡Nueva comanda!','success'); try{ navigator.vibrate && navigator.vibrate([90,50,90]); }catch(_){}}
 function beep(){
