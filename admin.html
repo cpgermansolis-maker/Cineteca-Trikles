@@ -188,20 +188,12 @@ textarea{min-height:70px;resize:vertical;}
     </div>
 
     <div id="panelMenu" style="display:none;">
-      <div class="tabs" style="margin-bottom:16px;">
-        <button class="tab active" id="subPlatillos" onclick="showSubMenu('platillos')">Platillos</button>
-        <button class="tab" id="subInsumos" onclick="showSubMenu('insumos')">Insumos</button>
+      <div class="panel-head">
+        <span class="label">Platillos · arma tu plato <span style="color:var(--warm-gray);font-weight:600;text-transform:none;letter-spacing:0;">(sobre el catálogo del POS)</span></span>
+        <button class="btn btn-ink btn-sm" onclick="openPlantillaForm()">+ Nuevo platillo</button>
       </div>
-      <div id="subPanelPlatillos">
-        <div class="panel-head"><span class="label">Platillos · arma tu plato</span>
-          <button class="btn btn-ink btn-sm" onclick="openPlatilloForm()">+ Nuevo platillo</button></div>
-        <div id="platillosList"><div class="empty"><div class="spinner"></div></div></div>
-      </div>
-      <div id="subPanelInsumos" style="display:none;">
-        <div class="panel-head"><span class="label">Insumos · ingredientes y costos</span>
-          <button class="btn btn-ink btn-sm" onclick="openInsumoForm()">+ Nuevo insumo</button></div>
-        <div id="insumosList"><div class="empty"><div class="spinner"></div></div></div>
-      </div>
+      <p class="hint" style="margin-bottom:14px;">Cada platillo se arma eligiendo productos del POS. Los <b>precios y el inventario</b> siempre son los del POS; aquí solo defines qué lleva y las cantidades.</p>
+      <div id="plantillasList"><div class="empty"><div class="spinner"></div></div></div>
     </div>
 
     <div id="panelFinanzas" style="display:none;">
@@ -386,11 +378,128 @@ function showTab(t){
     document.getElementById('tab'+x).classList.toggle('active', tab===t);
   });
   if(t==='finanzas') loadStats();
-  if(t==='menu') loadRestaurante();
+  if(t==='menu') loadPlantillas();
   if(t==='cocina') startCocina(); else stopCocina();
 }
 
-// ===== ADMIN MENÚ (platillos, insumos, recetas) =====
+// ===== PLATILLOS (plantillas sobre el catálogo del POS) =====
+const POS_GATEWAY = 'https://script.google.com/macros/s/AKfycbxFK2ToopjFo961ve5PyBhyMSFxW6osrPeWvrowASOVnmdxOPUaOGFTiey26y9jz3v_/exec';
+let POS_PRODS=[], POS_CATS={}, PLANTILLAS=[];
+function money0(n){ return '$'+ (Math.round((Number(n)||0)*100)/100).toLocaleString('es-MX'); }
+async function fetchPosMenu(){
+  const r = await (await fetch(POS_GATEWAY,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({accion:'menu',sucursal:'Tlaxcala'})})).json();
+  if(!r || !r.ok) throw new Error((r&&r.error)||'POS no respondió');
+  POS_PRODS = (r.datos.productos||[]).filter(p=>!p.es_insumo);
+  POS_CATS = {}; (r.datos.categorias||[]).forEach(c=>{ POS_CATS[c.id]=c.nombre; });
+}
+function posProd(id){ return POS_PRODS.find(p=>String(p.id)===String(id)); }
+async function loadPlantillas(){
+  const el=document.getElementById('plantillasList');
+  el.innerHTML='<div class="empty"><div class="spinner"></div></div>';
+  try{
+    if(!POS_PRODS.length) await fetchPosMenu();
+    const r=await api({action:'listPlantillas', token});
+    if(r.status!=='ok'){ sessionExpired(); return; }
+    PLANTILLAS=r.plantillas||[];
+    renderPlantillasList();
+  }catch(e){ el.innerHTML='<div class="empty">No se pudo cargar. ¿El POS está disponible? '+esc(String(e.message||e))+'</div>'; }
+}
+function renderPlantillasList(){
+  const el=document.getElementById('plantillasList');
+  if(!PLANTILLAS.length){ el.innerHTML='<div class="empty">Aún no hay platillos. Crea el primero con “+ Nuevo platillo”.</div>'; return; }
+  el.innerHTML=PLANTILLAS.map((p,i)=>{
+    const n=(p.items||[]).length; const activo=p.Activo!=='No';
+    return `<div class="row">
+      <span class="thumb pthumb" style="display:flex;align-items:center;justify-content:center;font-size:26px;">${p.Emoji||'🍽️'}</span>
+      <div><div class="rtitle">${esc(p.Nombre||'')}</div>
+        <div class="rmeta">${esc(p.Categoria||'Sin categoría')} · ${n} ingredientes <span class="pill ${activo?'on':'off'}">${activo?'Activo':'Oculto'}</span></div></div>
+      <div class="ractions"><button class="btn btn-out btn-sm" onclick="openPlantillaForm(${i})">Editar</button>
+        <button class="btn btn-red btn-sm" onclick="deletePlantilla(${i})">Borrar</button></div>
+    </div>`;
+  }).join('');
+}
+function openPlantillaForm(i){
+  const p=(i==null)?{}:PLANTILLAS[i];
+  const sel={}; (p.items||[]).forEach(it=>{ sel[String(it.pos_id)]=it; });
+  // productos del POS agrupados por categoría
+  const byCat={}, order=[];
+  POS_PRODS.forEach(pr=>{ const c=POS_CATS[pr.categoria_id]||'Otros'; if(!byCat[c]){byCat[c]=[];order.push(c);} byCat[c].push(pr); });
+  const rows = order.map(c=>{
+    return `<div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--warm-gray);margin:12px 0 4px;">${esc(c)}</div>` +
+      byCat[c].map(pr=>{
+        const it=sel[String(pr.id)]; const on=!!it;
+        return `<div class="pick-row" data-n="${esc((pr.nombre||'').toLowerCase())}" style="padding:7px 0;border-bottom:1px solid var(--hairline);">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+            <input type="checkbox" id="pk_${pr.id}" ${on?'checked':''} style="width:18px;height:18px;" onchange="document.getElementById('pkq_${pr.id}').style.display=this.checked?'flex':'none'">
+            <span style="font-weight:700;font-size:14px;">${esc(pr.nombre)}</span>
+            <span style="color:var(--warm-gray);font-size:12px;">${money0(pr.precio)}</span>
+          </label>
+          <div id="pkq_${pr.id}" style="display:${on?'flex':'none'};gap:8px;margin:5px 0 0 26px;flex-wrap:wrap;align-items:center;">
+            <label style="font-size:10px;color:var(--warm-gray);">Def <input id="pd_${pr.id}" type="number" step="0.25" value="${on?esc(it.default):'1'}" style="width:56px;padding:5px;"></label>
+            <label style="font-size:10px;color:var(--warm-gray);">Mín <input id="pm_${pr.id}" type="number" step="0.25" value="${on?esc(it.min):'0'}" style="width:56px;padding:5px;"></label>
+            <label style="font-size:10px;color:var(--warm-gray);">Máx <input id="px_${pr.id}" type="number" step="0.25" value="${on?esc(it.max):'5'}" style="width:56px;padding:5px;"></label>
+            <label style="font-size:10px;color:var(--warm-gray);display:flex;align-items:center;gap:3px;">Extra <input id="pe_${pr.id}" type="checkbox" ${on&&it.es_extra?'checked':''} style="width:15px;height:15px;"></label>
+          </div>
+        </div>`;
+      }).join('');
+  }).join('');
+  document.getElementById('formBody').innerHTML=`
+    <h2>${i==null?'Nuevo platillo':'Editar platillo'}</h2>
+    <input type="hidden" id="plt_id" value="${esc(p.id||'')}">
+    <div class="grid2">
+      <label class="field">NOMBRE<input id="plt_Nombre" type="text" value="${esc(p.Nombre||'')}" placeholder="Huevo a la Mexicana"></label>
+      <label class="field">EMOJI<input id="plt_Emoji" type="text" value="${esc(p.Emoji||'')}" placeholder="🍳"></label>
+    </div>
+    <label class="field">DESCRIPCIÓN<textarea id="plt_Descripcion">${esc(p.Descripcion||'')}</textarea></label>
+    <div class="grid2">
+      <label class="field">CATEGORÍA (para agrupar en el kiosco)<input id="plt_Categoria" type="text" list="pltCats" value="${esc(p.Categoria||'')}" placeholder="Desayunos, Comida…">
+        <datalist id="pltCats"><option value="Desayunos"><option value="Comida"><option value="Antojitos"><option value="Postres"></datalist></label>
+      <label class="field">ORDEN<input id="plt_Orden" type="number" value="${esc(p.Orden||'')}"></label>
+    </div>
+    <label class="field">VISIBLE<select id="plt_Activo">${opt(['Sí','No'], p.Activo==='No'?'No':'Sí')}</select></label>
+    <div style="font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--warm-gray);margin:16px 0 4px;">Ingredientes (del POS)</div>
+    <p class="hint" style="margin-bottom:6px;">Marca lo que lleva. <b>Def</b>=cantidad normal · <b>Mín/Máx</b>=lo que el cliente puede ajustar · <b>Extra</b>=opcional (empieza en 0).</p>
+    <input type="search" placeholder="🔍 Buscar ingrediente…" oninput="filterPick(this.value)" style="width:100%;padding:10px 14px;border:1px solid var(--input-border);border-radius:2px;margin-bottom:6px;">
+    <div style="max-height:320px;overflow:auto;border:1px solid var(--hairline);border-radius:2px;padding:6px 12px;">${rows||'<p class="hint">No hay productos en el POS.</p>'}</div>
+    <button class="btn btn-ink" style="width:100%;margin-top:16px;" id="plt_save" onclick="savePlantilla()">Guardar platillo</button>`;
+  openOverlay('formModal');
+}
+function filterPick(q){
+  q=(q||'').toLowerCase().trim();
+  document.querySelectorAll('#formBody .pick-row').forEach(r=>{ r.style.display = (!q || (r.dataset.n||'').indexOf(q)>=0)?'block':'none'; });
+}
+async function savePlantilla(){
+  const p={ Nombre:val('plt_Nombre'), Emoji:val('plt_Emoji'), Descripcion:val('plt_Descripcion'),
+    Categoria:val('plt_Categoria'), Orden:val('plt_Orden'), Activo:val('plt_Activo') };
+  const id=val('plt_id'); if(id) p.id=id;
+  if(!p.Nombre){ toast('Ponle nombre al platillo.','error'); return; }
+  const items=[];
+  POS_PRODS.forEach(pr=>{
+    const on=document.getElementById('pk_'+pr.id);
+    if(on && on.checked){
+      items.push({ pos_id:pr.id, nombre:pr.nombre,
+        default: parseFloat(val('pd_'+pr.id))||0, min: parseFloat(val('pm_'+pr.id))||0,
+        max: parseFloat(val('px_'+pr.id))||0, es_extra: (document.getElementById('pe_'+pr.id)||{}).checked?1:0 });
+    }
+  });
+  if(!items.length){ toast('Elige al menos un ingrediente.','error'); return; }
+  p.items=items;
+  const btn=document.getElementById('plt_save'); btn.disabled=true; btn.textContent='Guardando…';
+  try{ const r=await api({action:'savePlantilla', token, plantilla:p});
+    if(r.status==='ok'){ toast('Platillo guardado.','success'); closeOverlay('formModal'); loadPlantillas(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else { toast(r.message||'No se pudo.','error'); btn.disabled=false; btn.textContent='Guardar platillo'; }
+  }catch(e){ toast('Error de conexión.','error'); btn.disabled=false; btn.textContent='Guardar platillo'; }
+}
+async function deletePlantilla(i){
+  const p=PLANTILLAS[i]; if(!confirm('¿Borrar el platillo “'+(p.Nombre||'')+'”?')) return;
+  try{ const r=await api({action:'deletePlantilla', token, id:p.id});
+    if(r.status==='ok'){ toast('Platillo borrado.','success'); loadPlantillas(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired(); else toast(r.message||'No se pudo.','error');
+  }catch(e){ toast('Error de conexión.','error'); }
+}
+
+// ===== (OBSOLETO) admin de platillos/insumos de Cineteca — reemplazado por plantillas sobre POS =====
 let R_insumos=[], R_platillos=[], R_recetas=[];
 function showSubMenu(s){
   document.getElementById('subPanelPlatillos').style.display = s==='platillos'?'block':'none';
