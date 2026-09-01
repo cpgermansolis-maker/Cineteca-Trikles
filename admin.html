@@ -192,7 +192,11 @@ textarea{min-height:70px;resize:vertical;}
         <span class="label">Platillos · arma tu plato <span style="color:var(--warm-gray);font-weight:600;text-transform:none;letter-spacing:0;">(sobre el catálogo del POS)</span></span>
         <button class="btn btn-ink btn-sm" onclick="openPlantillaForm()">+ Nuevo platillo</button>
       </div>
-      <p class="hint" style="margin-bottom:14px;">Cada platillo se arma eligiendo productos del POS. Los <b>precios y el inventario</b> siempre son los del POS; aquí solo defines qué lleva y las cantidades.</p>
+      <div style="display:flex;align-items:center;gap:10px;margin:6px 0 12px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--warm-gray);">📍 Sucursal:</span>
+        <select id="sucSelector" onchange="changeSucursal(this.value)" style="max-width:220px;width:auto;"></select>
+        <span class="hint" style="margin:0;">Los precios e inventario mostrados son de esta sucursal. El platillo es el mismo en todas.</span>
+      </div>
       <div id="plantillasList"><div class="empty"><div class="spinner"></div></div></div>
     </div>
 
@@ -384,14 +388,23 @@ function showTab(t){
 
 // ===== PLATILLOS (plantillas sobre el catálogo del POS) =====
 const POS_GATEWAY = 'https://script.google.com/macros/s/AKfycbxFK2ToopjFo961ve5PyBhyMSFxW6osrPeWvrowASOVnmdxOPUaOGFTiey26y9jz3v_/exec';
-let POS_PRODS=[], POS_CATS={}, PLANTILLAS=[];
+let POS_PRODS=[], POS_CATS={}, PLANTILLAS=[], POS_SUCS=[], SUC_SEL=(function(){try{return localStorage.getItem('trikles_admin_suc')||'';}catch(_){return'';}})();
 function money0(n){ return '$'+ (Math.round((Number(n)||0)*100)/100).toLocaleString('es-MX'); }
 async function fetchPosMenu(){
-  const r = await (await fetch(POS_GATEWAY,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({accion:'menu',sucursal:'Tlaxcala'})})).json();
+  const ref = SUC_SEL || 'Tlaxcala';
+  const r = await (await fetch(POS_GATEWAY,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({accion:'menu',sucursal:ref})})).json();
   if(!r || !r.ok) throw new Error((r&&r.error)||'POS no respondió');
   POS_PRODS = (r.datos.productos||[]).filter(p=>!p.es_insumo);
   POS_CATS = {}; (r.datos.categorias||[]).forEach(c=>{ POS_CATS[c.id]=c.nombre; });
+  POS_SUCS = r.datos.sucursales||[];
+  if(!SUC_SEL && r.datos.sucursal){ SUC_SEL = r.datos.sucursal.id; }
+  renderSucSelector();
 }
+function renderSucSelector(){
+  const sel=document.getElementById('sucSelector'); if(!sel) return;
+  sel.innerHTML = POS_SUCS.map(s=>`<option value="${esc(s.id)}"${String(s.id)===String(SUC_SEL)?' selected':''}>${esc(s.nombre)}</option>`).join('');
+}
+function changeSucursal(id){ SUC_SEL=id; try{localStorage.setItem('trikles_admin_suc',id);}catch(_){}; POS_PRODS=[]; loadPlantillas(); }
 function posProd(id){ return POS_PRODS.find(p=>String(p.id)===String(id)); }
 async function loadPlantillas(){
   const el=document.getElementById('plantillasList');
