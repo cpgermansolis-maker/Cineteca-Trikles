@@ -78,6 +78,7 @@ button{font-family:inherit;cursor:pointer;}
 /* ===== ARMADOR ===== */
 .builder-head{display:flex;align-items:center;gap:14px;margin-bottom:8px;}
 .builder-head .be{font-size:44px;}
+.builder-head .bimg{width:72px;height:72px;object-fit:cover;border-radius:16px;flex:none;}
 .sec-label{font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--warm-gray);margin:26px 0 10px;border-top:1px solid var(--hairline);padding-top:14px;}
 .ing{display:flex;align-items:center;gap:14px;padding:14px 0;border-bottom:1px solid var(--hairline);}
 .ing .ie{font-size:32px;width:44px;text-align:center;flex:none;}
@@ -236,7 +237,7 @@ async function loadMenu(){
     // 2) Platillos "arma tu plato" = plantillas (estructura), precios del POS
     const pl = await (await fetch(APPS_SCRIPT_URL+'?action=plantillas')).json();
     MENU = ((pl&&pl.plantillas)||[]).map(t=>({
-      Nombre:t.Nombre, Descripcion:t.Descripcion||'', Emoji:t.Emoji||'🍽️', PrecioBase:0, Imagen_URL:'',
+      Nombre:t.Nombre, Descripcion:t.Descripcion||'', Emoji:t.Emoji||'🍽️', PrecioBase:0, Imagen_URL:t.Imagen||'',
       ingredientes: (t.items||[]).map(it=>{ const pp=posById[it.pos_id]; if(!pp) return null; return {
         id:it.pos_id, Nombre:pp.nombre, Precio:pp.precio, Unidad:'', Emoji:'', Paso:1,
         Default:Number(it.default)||0, Min:Number(it.min)||0, Max:Number(it.max)||0, Extra:it.es_extra?'Sí':'No' };
@@ -325,7 +326,7 @@ function renderBuilder(){
   const extras = (p.ingredientes||[]).filter(g=>g.Extra==='Sí');
   const rowsFor = (list)=> list.map(g=>ingRow(g)).join('');
   document.getElementById('vBuilder').innerHTML = `
-    <div class="builder-head"><div class="be">${p.Emoji||'🍽️'}</div>
+    <div class="builder-head">${getImageUrl(p.Imagen_URL)?`<img class="bimg" src="${getImageUrl(p.Imagen_URL)}" alt="" onerror="this.outerHTML='<div class=\\'be\\'>${p.Emoji||'🍽️'}</div>'">`:`<div class="be">${p.Emoji||'🍽️'}</div>`}
       <div><div class="h-title" style="font-size:clamp(24px,4.5vw,40px);">${esc(p.Nombre)}</div>
       <div class="h-sub">${esc(p.Descripcion||'')}</div></div></div>
     <div class="sec-label">Tu platillo lleva</div>

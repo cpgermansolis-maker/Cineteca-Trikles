@@ -422,8 +422,9 @@ function renderPlantillasList(){
   if(!PLANTILLAS.length){ el.innerHTML='<div class="empty">Aún no hay platillos. Crea el primero con “+ Nuevo platillo”.</div>'; return; }
   el.innerHTML=PLANTILLAS.map((p,i)=>{
     const n=(p.items||[]).length; const activo=p.Activo!=='No';
+    const img=getImageUrl(p.Imagen);
     return `<div class="row">
-      <span class="thumb pthumb" style="display:flex;align-items:center;justify-content:center;font-size:26px;">${p.Emoji||'🍽️'}</span>
+      ${img?`<img class="thumb pthumb" src="${img}" style="object-fit:cover;" onerror="this.outerHTML='<span class=\\'thumb pthumb\\' style=\\'display:flex;align-items:center;justify-content:center;font-size:26px;\\'>${p.Emoji||'🍽️'}</span>'">`:`<span class="thumb pthumb" style="display:flex;align-items:center;justify-content:center;font-size:26px;">${p.Emoji||'🍽️'}</span>`}
       <div><div class="rtitle">${esc(p.Nombre||'')}</div>
         <div class="rmeta">${esc(p.Categoria||'Sin categoría')} · ${n} ingredientes <span class="pill ${activo?'on':'off'}">${activo?'Activo':'Oculto'}</span></div></div>
       <div class="ractions"><button class="btn btn-out btn-sm" onclick="openPlantillaForm(${i})">Editar</button>
@@ -464,6 +465,15 @@ function openPlantillaForm(i){
       <label class="field">EMOJI<input id="plt_Emoji" type="text" value="${esc(p.Emoji||'')}" placeholder="🍳"></label>
     </div>
     <label class="field">DESCRIPCIÓN<textarea id="plt_Descripcion">${esc(p.Descripcion||'')}</textarea></label>
+    <label class="field">FOTO DEL PLATILLO (opcional — si la pones, se muestra en vez del emoji)</label>
+    <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:4px;">
+      <img class="prev" id="plt_img_prev" src="${getImageUrl(p.Imagen)||''}" alt="" onerror="this.style.visibility='hidden'" style="width:72px;height:72px;object-fit:cover;border-radius:6px;background:var(--hairline);${getImageUrl(p.Imagen)?'':'visibility:hidden;'}">
+      <div style="flex:1;">
+        <input type="hidden" id="plt_Imagen" value="${esc(p.Imagen||'')}">
+        <input type="file" accept="image/*" id="plt_img_file" onchange="uploadImg('plt_img_file','plt_Imagen','plt_img_prev')" style="width:100%;">
+        <input type="url" placeholder="…o pega URL de imagen" value="${esc(p.Imagen||'')}" style="width:100%;margin-top:6px;" oninput="document.getElementById('plt_Imagen').value=this.value;document.getElementById('plt_img_prev').src=getImageUrl(this.value);document.getElementById('plt_img_prev').style.visibility='visible';">
+      </div>
+    </div>
     <div class="grid2">
       <label class="field">CATEGORÍA (para agrupar en el kiosco)<input id="plt_Categoria" type="text" list="pltCats" value="${esc(p.Categoria||'')}" placeholder="Desayunos, Comida…">
         <datalist id="pltCats"><option value="Desayunos"><option value="Comida"><option value="Antojitos"><option value="Postres"></datalist></label>
@@ -482,7 +492,7 @@ function filterPick(q){
   document.querySelectorAll('#formBody .pick-row').forEach(r=>{ r.style.display = (!q || (r.dataset.n||'').indexOf(q)>=0)?'block':'none'; });
 }
 async function savePlantilla(){
-  const p={ Nombre:val('plt_Nombre'), Emoji:val('plt_Emoji'), Descripcion:val('plt_Descripcion'),
+  const p={ Nombre:val('plt_Nombre'), Emoji:val('plt_Emoji'), Imagen:val('plt_Imagen'), Descripcion:val('plt_Descripcion'),
     Categoria:val('plt_Categoria'), Orden:val('plt_Orden'), Activo:val('plt_Activo') };
   const id=val('plt_id'); if(id) p.id=id;
   if(!p.Nombre){ toast('Ponle nombre al platillo.','error'); return; }
@@ -961,7 +971,7 @@ async function deleteProduct(i){
 // ===== IMAGEN =====
 function setUploading(on){
   uploading = on;
-  ['f_save','p_save'].forEach(id=>{ const b=document.getElementById(id); if(!b) return;
+  ['f_save','p_save','plt_save'].forEach(id=>{ const b=document.getElementById(id); if(!b) return;
     b.disabled=on;
     if(on){ b.dataset.txt=b.dataset.txt||b.textContent; b.textContent='⏳ Subiendo imagen…'; }
     else if(b.dataset.txt){ b.textContent=b.dataset.txt; }
