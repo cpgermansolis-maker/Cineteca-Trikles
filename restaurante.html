@@ -87,6 +87,9 @@ button{font-family:inherit;cursor:pointer;}
 .ing .in{font-size:17px;font-weight:800;}
 .ing .ip{font-size:13px;color:var(--warm-gray);font-weight:600;}
 .stepper{display:flex;align-items:center;gap:12px;flex:none;}
+.ing.agotado{opacity:.6;}
+.ing.agotado .ie,.ing.agotado .in{filter:grayscale(1);}
+.agot-badge{flex:none;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--red);border:1.5px solid var(--red);border-radius:999px;padding:6px 12px;}
 .step{width:52px;height:52px;border-radius:50%;font-size:26px;display:flex;align-items:center;justify-content:center;}
 .qty{min-width:66px;text-align:center;}
 .qty .qn{font-size:22px;font-weight:900;display:inline-block;}
@@ -258,12 +261,9 @@ async function loadMenu(){
       }).filter(Boolean);
       return { Nombre:t.Nombre, Descripcion:t.Descripcion||'', Emoji:t.Emoji||'🍽️', PrecioBase:0, Imagen_URL:t.Imagen||'', ingredientes:ings };
     })
-    // Quita las OPCIONES agotadas que no son obligatorias (default 0 y mín 0): sean base o extra,
-    // son cosas que el cliente agrega si quiere; si no hay, simplemente no se ofrecen.
-    .map(m=>{ m.ingredientes = m.ingredientes.filter(g=> g.Disp || g.Default>0 || g.Min>0); return m; })
-    // Oculta el platillo solo si le falta un ingrediente OBLIGATORIO (default>0 o mín>0) por inventario,
-    // o si se quedó sin ingredientes.
-    .filter(m=> m.ingredientes.length && !m.ingredientes.some(g=> !g.Disp && (g.Default>0 || g.Min>0)));
+    // El platillo SIEMPRE aparece (mientras tenga ingredientes en el catálogo). Lo que no haya en
+    // inventario NO se oculta: en el armador se muestra como "Agotado" y no se deja agregar.
+    .filter(m=> m.ingredientes.length);
 
     renderMenu();
   }catch(e){ document.getElementById('dishes').innerHTML='<div class="loading">No se pudo cargar el menú. '+esc(String(e.message||e))+'</div>'; }
@@ -346,7 +346,7 @@ function itemsCount(){ return cart.length + selectedProducts().reduce((a,p)=>a+p
 function platilloDesde(p){
   // precio mínimo = base + ingredientes obligatorios en su cantidad mínima
   let t = parseFloat(p.PrecioBase)||0;
-  (p.ingredientes||[]).forEach(g=>{ if(g.Extra!=='Sí'){ t += (parseFloat(g.Precio)||0) * (parseFloat(g.Min)||0); } });
+  (p.ingredientes||[]).forEach(g=>{ if(g.Extra!=='Sí' && g.Disp!==false){ t += (parseFloat(g.Precio)||0) * (parseFloat(g.Min)||0); } });
   return t;
 }
 
@@ -354,7 +354,8 @@ function platilloDesde(p){
 function openBuilder(i){
   const p = MENU[i];
   const qty = {};
-  (p.ingredientes||[]).forEach(g=>{ qty[g.id] = parseFloat(g.Default)||0; });
+  // Los ingredientes agotados empiezan en 0 (no se puede pre-cargar lo que no hay).
+  (p.ingredientes||[]).forEach(g=>{ qty[g.id] = (g.Disp!==false) ? (parseFloat(g.Default)||0) : 0; });
   building = { p, qty, notas:'' };
   renderBuilder();
   showView('vBuilder');
@@ -378,6 +379,14 @@ function renderBuilder(){
 }
 function ingRow(g){
   const q = building.qty[g.id]||0;
+  // Ingrediente agotado: se muestra pero no se puede agregar.
+  if(g.Disp===false){
+    return `<div class="ing agotado" id="ing_${g.id}">
+      <div class="ie">${g.Emoji||'•'}</div>
+      <div class="info"><div class="in">${esc(g.Nombre)}</div><div class="ip">${money(parseFloat(g.Precio)||0)} / ${esc(g.Unidad||'pieza')}</div></div>
+      <div class="agot-badge">Agotado</div>
+    </div>`;
+  }
   return `<div class="ing" id="ing_${g.id}">
     <div class="ie">${g.Emoji||'•'}</div>
     <div class="info"><div class="in">${esc(g.Nombre)}</div><div class="ip">${money(parseFloat(g.Precio)||0)} / ${esc(g.Unidad||'pieza')}</div></div>
@@ -390,6 +399,7 @@ function ingRow(g){
 }
 function changeIng(id, dir){
   const g = building.p.ingredientes.find(x=>x.id===id); if(!g) return;
+  if(g.Disp===false){ toast('Ese ingrediente está agotado.'); return; }
   const paso = parseFloat(g.Paso)||1, min=parseFloat(g.Min)||0, max=parseFloat(g.Max)||99;
   let q = round2((building.qty[id]||0) + paso*dir);
   if(q<min) q=min; if(q>max){ q=max; toast('Máximo '+fmtQty(max)+' '+(g.Unidad||'')); }
