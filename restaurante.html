@@ -138,6 +138,11 @@ button{font-family:inherit;cursor:pointer;}
 @keyframes spin{to{transform:rotate(360deg);}}
 .toast{position:fixed;left:50%;bottom:110px;transform:translateX(-50%) translateY(160%);background:var(--ink);color:var(--cream);border-radius:14px;padding:14px 22px;font-size:15px;font-weight:600;z-index:50;box-shadow:0 12px 30px rgba(0,0,0,.35);transition:transform .3s;}
 .toast.show{transform:translateX(-50%) translateY(0);}
+.sucbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:14px 0 2px;}
+.sucbar .suclbl{font-size:13px;font-weight:700;color:var(--warm-gray);text-transform:uppercase;letter-spacing:.05em;}
+.sucpill{border:2px solid var(--hairline);background:var(--surface);color:var(--ink,#2b2b2b);font-weight:800;font-size:14px;padding:8px 16px;border-radius:999px;cursor:pointer;transition:transform .07s;}
+.sucpill:active{transform:translateY(2px);}
+.sucpill.on{border-color:var(--red);background:var(--red);color:#fff;}
 </style>
 </head>
 <body>
@@ -152,6 +157,7 @@ button{font-family:inherit;cursor:pointer;}
   <div class="view" id="vMenu">
     <div class="h-title">¿Qué se te antoja?</div>
     <div class="h-sub">Elige tu platillo y ármalo a tu gusto. Tú decides los ingredientes.</div>
+    <div class="sucbar" id="sucbar"></div>
     <div class="dishes" id="dishes"><div class="loading"><div class="spin"></div>Cargando menú…</div></div>
     <div id="prodSection"></div>
   </div>
@@ -184,10 +190,12 @@ button{font-family:inherit;cursor:pointer;}
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw3skEAAbt6skxAiSon39EHPOdEAw6gXcUbtFMxCfNHNL-OqisUgD-DQ5fGTm_1FGq-/exec';
 // Puerta del POS (catálogo único). El restaurante está en Tlaxcala.
 const POS_GATEWAY = 'https://script.google.com/macros/s/AKfycbxFK2ToopjFo961ve5PyBhyMSFxW6osrPeWvrowASOVnmdxOPUaOGFTiey26y9jz3v_/exec';
-const POS_SUCURSAL = 'Tlaxcala';
+const POS_SUCURSAL = 'Tlaxcala';   // sucursal por defecto (el restaurante físico)
 // Categorías del POS que son INGREDIENTES: no se venden sueltas, solo dentro de platillos.
 const CAT_INGREDIENTES = ['Restaurante Trik'];
 let posById = {};
+// Sucursal elegida por el cliente (se recuerda en el aparato). Default: Tlaxcala.
+let SUC = localStorage.getItem('trikles_kiosco_suc') || POS_SUCURSAL;
 
 let MENU = [];
 let PRODUCTOS = [];   // productos comprables (del POS, por categoría)
@@ -222,30 +230,60 @@ document.addEventListener('pointerdown', e=>{ if(e.target.closest('.btn3d,.step,
 // ===== CARGA (catálogo del POS + plantillas) =====
 async function loadMenu(){
   try{
-    // 1) Catálogo del POS (Tlaxcala): productos con su precio de sucursal
-    const pr = await (await fetch(POS_GATEWAY,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({accion:'menu',sucursal:POS_SUCURSAL})})).json();
+    // 1) Catálogo del POS (sucursal elegida): productos con su precio y disponibilidad de esa sucursal
+    const pr = await (await fetch(POS_GATEWAY,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({accion:'menu',sucursal:SUC})})).json();
     if(!pr || !pr.ok) throw new Error('POS no respondió');
+    // La sucursal que el POS realmente resolvió (por si mandamos un nombre que no existe)
+    if(pr.datos.sucursal && pr.datos.sucursal.nombre){ SUC = pr.datos.sucursal.nombre; localStorage.setItem('trikles_kiosco_suc', SUC); }
+    renderSucBar(pr.datos.sucursales||[], SUC);
     const catName={}; (pr.datos.categorias||[]).forEach(c=>catName[c.id]=c.nombre);
     posById={};
     (pr.datos.productos||[]).forEach(p=>{ posById[p.id]={ id:p.id, nombre:p.nombre, descripcion:p.descripcion||'',
-      precio:Number(p.precio)||0, categoria:catName[p.categoria_id]||'Otros', imagen:p.imagen||'' }; });
-    // Productos comprables = todo menos la categoría de ingredientes
+      precio:Number(p.precio)||0, categoria:catName[p.categoria_id]||'Otros', imagen:p.imagen||'',
+      disponible: p.disponible!==false }; });
+    // Productos comprables = todo menos la categoría de ingredientes, y SOLO si hay inventario en la sucursal
     PRODUCTOS = Object.keys(posById).map(k=>posById[k])
       .filter(p=> CAT_INGREDIENTES.indexOf(p.categoria)<0)
+      .filter(p=> p.disponible)
       .map(p=>({ id:p.id, Nombre:p.nombre, Precio:p.precio, Seccion:p.categoria, Tag:'', Nota:'', Emoji:'', Imagen_URL:p.imagen }));
 
     // 2) Platillos "arma tu plato" = plantillas (estructura), precios del POS
     const pl = await (await fetch(APPS_SCRIPT_URL+'?action=plantillas')).json();
-    MENU = ((pl&&pl.plantillas)||[]).map(t=>({
-      Nombre:t.Nombre, Descripcion:t.Descripcion||'', Emoji:t.Emoji||'🍽️', PrecioBase:0, Imagen_URL:t.Imagen||'',
-      ingredientes: (t.items||[]).map(it=>{ const pp=posById[it.pos_id]; if(!pp) return null; return {
+    MENU = ((pl&&pl.plantillas)||[]).map(t=>{
+      const ings = (t.items||[]).map(it=>{ const pp=posById[it.pos_id]; if(!pp) return null; return {
         id:it.pos_id, Nombre:pp.nombre, Precio:pp.precio, Unidad:'', Emoji:'', Paso:1,
-        Default:Number(it.default)||0, Min:Number(it.min)||0, Max:Number(it.max)||0, Extra:it.es_extra?'Sí':'No' };
-      }).filter(Boolean)
-    })).filter(m=>m.ingredientes.length);
+        Default:Number(it.default)||0, Min:Number(it.min)||0, Max:Number(it.max)||0,
+        Extra:it.es_extra?'Sí':'No', Disp: pp.disponible!==false };
+      }).filter(Boolean);
+      return { Nombre:t.Nombre, Descripcion:t.Descripcion||'', Emoji:t.Emoji||'🍽️', PrecioBase:0, Imagen_URL:t.Imagen||'', ingredientes:ings };
+    })
+    // Quita las OPCIONES agotadas que no son obligatorias (default 0 y mín 0): sean base o extra,
+    // son cosas que el cliente agrega si quiere; si no hay, simplemente no se ofrecen.
+    .map(m=>{ m.ingredientes = m.ingredientes.filter(g=> g.Disp || g.Default>0 || g.Min>0); return m; })
+    // Oculta el platillo solo si le falta un ingrediente OBLIGATORIO (default>0 o mín>0) por inventario,
+    // o si se quedó sin ingredientes.
+    .filter(m=> m.ingredientes.length && !m.ingredientes.some(g=> !g.Disp && (g.Default>0 || g.Min>0)));
 
     renderMenu();
   }catch(e){ document.getElementById('dishes').innerHTML='<div class="loading">No se pudo cargar el menú. '+esc(String(e.message||e))+'</div>'; }
+}
+function renderSucBar(sucs, actual){
+  const bar=document.getElementById('sucbar'); if(!bar) return;
+  if(!sucs || sucs.length<2){ bar.innerHTML=''; return; }   // una sola sucursal: no hay nada que elegir
+  bar.innerHTML = '<span class="suclbl">📍 Sucursal</span>' + sucs.map(s=>
+    `<button class="sucpill ${s.nombre===actual?'on':''}" onclick="changeSuc('${esc(s.nombre)}')">${esc(s.nombre)}</button>`
+  ).join('');
+}
+function changeSuc(nombre){
+  if(nombre===SUC) return;
+  const tenia = cart.length || Object.keys(prodQty).length;
+  SUC = nombre; localStorage.setItem('trikles_kiosco_suc', SUC);
+  cart=[]; prodQty={};   // precios e inventario cambian entre sucursales: empezamos limpio
+  if(tenia) toast('Cambiaste de sucursal — se vació el carrito.');
+  document.getElementById('dishes').innerHTML='<div class="loading"><div class="spin"></div>Cargando menú…</div>';
+  document.getElementById('prodSection').innerHTML='';
+  renderCartFab();
+  loadMenu();
 }
 function renderMenu(){
   const el=document.getElementById('dishes');
@@ -440,7 +478,7 @@ async function confirmOrder(){
   const btn=document.getElementById('btnConfirm'); btn.disabled=true; btn.textContent='Enviando…';
   try{
     const r = await (await fetch(APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({sheet:'Comandas', Nombre:nombre, Detalle:detalle, Total:String(Math.round(tot)), Notas:''})})).json();
+      body:JSON.stringify({sheet:'Comandas', Nombre:nombre, Detalle:detalle, Total:String(Math.round(tot)), Notas:'Sucursal: '+SUC})})).json();
     if(r.status==='ok'){ showDone(r.folio, Math.round(tot), nombre); }
     else throw new Error();
   }catch(e){ btn.disabled=false; btn.textContent='Confirmar pedido · '+money(tot); toast('No se pudo enviar. Intenta de nuevo.'); }
