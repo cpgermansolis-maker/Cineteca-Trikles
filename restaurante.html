@@ -67,6 +67,7 @@ button{font-family:inherit;cursor:pointer;}
 .prod{background:var(--surface);border:1px solid var(--hairline);border-radius:16px;padding:16px;display:flex;flex-direction:column;gap:6px;}
 .prod.on{border-color:var(--red);box-shadow:0 0 0 2px rgba(200,49,27,.15);}
 .prod .pe{font-size:34px;}
+.prod .pimg{width:100%;height:120px;object-fit:cover;border-radius:12px;background:var(--hairline);}
 .prod .pn{font-size:16px;font-weight:800;text-transform:uppercase;line-height:1.1;}
 .prod .pt{font-size:11px;font-weight:700;letter-spacing:.12em;color:var(--warm-gray);text-transform:uppercase;}
 .prod .pfoot{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px;}
@@ -323,8 +324,9 @@ function prodCard(p){
          <div class="qty" id="pq_${p.id}"><span class="qn">${q}</span></div>
          <button class="btn3d step" onclick="changeProd('${p.id}',1)">+</button>
        </div>`;
+  const img=getImageUrl(p.Imagen_URL);
   return `<div class="prod ${q>0?'on':''}" id="prod_${p.id}">
-    <div class="pe">${p.Emoji||'🥤'}</div>
+    ${img?`<img class="pimg" src="${img}" alt="" onerror="this.outerHTML='<div class=\\'pe\\'>${p.Emoji||'🥤'}</div>'">`:`<div class="pe">${p.Emoji||'🥤'}</div>`}
     <div class="pt">${esc(p.Tag||'')}</div>
     <div class="pn">${esc(p.Nombre)}</div>
     <div class="pfoot"><span class="pp">${money(parseFloat(p.Precio)||0)}${p.Nota?` <small style="font-size:11px;color:var(--warm-gray);font-weight:600;">${esc(p.Nota)}</small>`:''}</span>${control}</div>
