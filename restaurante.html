@@ -181,9 +181,15 @@ button{font-family:inherit;cursor:pointer;}
 
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw3skEAAbt6skxAiSon39EHPOdEAw6gXcUbtFMxCfNHNL-OqisUgD-DQ5fGTm_1FGq-/exec';
+// Puerta del POS (catálogo único). El restaurante está en Tlaxcala.
+const POS_GATEWAY = 'https://script.google.com/macros/s/AKfycbxFK2ToopjFo961ve5PyBhyMSFxW6osrPeWvrowASOVnmdxOPUaOGFTiey26y9jz3v_/exec';
+const POS_SUCURSAL = 'Tlaxcala';
+// Categorías del POS que son INGREDIENTES: no se venden sueltas, solo dentro de platillos.
+const CAT_INGREDIENTES = ['Restaurante Trik'];
+let posById = {};
 
 let MENU = [];
-let PRODUCTOS = [];   // bebidas/antojos ya registrados (tienda)
+let PRODUCTOS = [];   // productos comprables (del POS, por categoría)
 let prodQty = {};     // id -> cantidad
 let cart = [];        // [{id,nombre,emoji,base,lines:[{nombre,qty,unidad,emoji,precio}],notas,total}]
 let building = null;  // {p, qty:{insumoId:num}, notas}
@@ -212,16 +218,33 @@ function toast(m){ const e=document.getElementById('toast'); e.textContent=m; e.
 // Vibración (haptic) en cada toque de botón 3D
 document.addEventListener('pointerdown', e=>{ if(e.target.closest('.btn3d,.step,.dish')) { try{ navigator.vibrate && navigator.vibrate(12); }catch(_){} } bumpIdle(); }, {passive:true});
 
-// ===== CARGA =====
+// ===== CARGA (catálogo del POS + plantillas) =====
 async function loadMenu(){
   try{
-    const u = new URL(APPS_SCRIPT_URL); u.searchParams.set('action','menu');
-    const r = await (await fetch(u.toString())).json();
-    if(r.status!=='ok') throw new Error();
-    MENU = r.platillos || [];
-    PRODUCTOS = (r.productos||[]).filter(p=>!/membres/i.test(p.Tag||''));
+    // 1) Catálogo del POS (Tlaxcala): productos con su precio de sucursal
+    const pr = await (await fetch(POS_GATEWAY,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({accion:'menu',sucursal:POS_SUCURSAL})})).json();
+    if(!pr || !pr.ok) throw new Error('POS no respondió');
+    const catName={}; (pr.datos.categorias||[]).forEach(c=>catName[c.id]=c.nombre);
+    posById={};
+    (pr.datos.productos||[]).forEach(p=>{ posById[p.id]={ id:p.id, nombre:p.nombre, descripcion:p.descripcion||'',
+      precio:Number(p.precio)||0, categoria:catName[p.categoria_id]||'Otros', imagen:p.imagen||'' }; });
+    // Productos comprables = todo menos la categoría de ingredientes
+    PRODUCTOS = Object.keys(posById).map(k=>posById[k])
+      .filter(p=> CAT_INGREDIENTES.indexOf(p.categoria)<0)
+      .map(p=>({ id:p.id, Nombre:p.nombre, Precio:p.precio, Seccion:p.categoria, Tag:'', Nota:'', Emoji:'', Imagen_URL:p.imagen }));
+
+    // 2) Platillos "arma tu plato" = plantillas (estructura), precios del POS
+    const pl = await (await fetch(APPS_SCRIPT_URL+'?action=plantillas')).json();
+    MENU = ((pl&&pl.plantillas)||[]).map(t=>({
+      Nombre:t.Nombre, Descripcion:t.Descripcion||'', Emoji:t.Emoji||'🍽️', PrecioBase:0, Imagen_URL:'',
+      ingredientes: (t.items||[]).map(it=>{ const pp=posById[it.pos_id]; if(!pp) return null; return {
+        id:it.pos_id, Nombre:pp.nombre, Precio:pp.precio, Unidad:'', Emoji:'', Paso:1,
+        Default:Number(it.default)||0, Min:Number(it.min)||0, Max:Number(it.max)||0, Extra:it.es_extra?'Sí':'No' };
+      }).filter(Boolean)
+    })).filter(m=>m.ingredientes.length);
+
     renderMenu();
-  }catch(e){ document.getElementById('dishes').innerHTML='<div class="loading">No se pudo cargar el menú. Revisa la conexión.</div>'; }
+  }catch(e){ document.getElementById('dishes').innerHTML='<div class="loading">No se pudo cargar el menú. '+esc(String(e.message||e))+'</div>'; }
 }
 function renderMenu(){
   const el=document.getElementById('dishes');
@@ -238,7 +261,8 @@ function renderMenu(){
   renderProducts();
   renderCartFab();
 }
-const SEC_EMOJI={ 'bebidas':'🥤','snacks':'🍿','comida':'🍔','postres':'🍰','dulces':'🍬','vinateria':'🍺' };
+const SEC_EMOJI={ 'bebidas':'🥤','snacks':'🍿','comida':'🍔','postres':'🍰','dulces':'🍬','vinateria':'🍺',
+  'dulceria':'🍬','dulcería':'🍬','vinos y licores':'🍺','entradas':'🍽️','otros':'🍴' };
 function renderProducts(){
   const sec=document.getElementById('prodSection');
   if(!PRODUCTOS.length){ sec.innerHTML=''; return; }
