@@ -258,6 +258,28 @@ button{font-family:inherit;}
 .lookup-qr{margin-top:10px;}
 .lookup-qr canvas{display:block;}
 
+/* ===== Pase VIP ===== */
+.field-label{font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--warm-gray);margin:14px 0 8px;}
+.pase-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px;}
+.pase-opt{text-align:left;padding:14px;border:1px solid var(--input-border);border-radius:4px;background:var(--surface);cursor:pointer;transition:all .15s;display:flex;flex-direction:column;gap:3px;font-family:inherit;}
+.pase-opt:hover{border-color:var(--ink);}
+.pase-opt.on{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);}
+.pase-opt .po-name{font-size:14px;font-weight:800;}
+.pase-opt .po-desc{font-size:11.5px;color:var(--warm-gray);line-height:1.35;}
+.pase-opt.vip{border-color:#D9B24A;background:linear-gradient(160deg,#FFFDF5,#FBF1D6);}
+.pase-opt.vip .po-name{color:#8A6A16;}
+.pase-opt.vip.on{border-color:#B8912F;box-shadow:inset 0 0 0 1.5px #B8912F;}
+@media(max-width:420px){.pase-opts{grid-template-columns:1fr;}}
+
+.qr-box.vip{background:linear-gradient(150deg,#FFF8E4,#F3DFA0);padding:14px;border-radius:6px;box-shadow:0 0 0 2px #B8912F,0 8px 24px rgba(138,106,22,.28);}
+.vip-ribbon{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.14em;color:#5A4410;background:linear-gradient(90deg,#E8C86A,#C99A2E);padding:8px 20px;border-radius:999px;margin-bottom:12px;box-shadow:0 2px 8px rgba(138,106,22,.3);}
+.vip-note{font-size:12.5px;font-weight:700;letter-spacing:.08em;color:#8A6A16;text-transform:uppercase;margin:10px 0 2px;}
+.confirm-vip .confirm-serif{color:#8A6A16;}
+
+.lookup-card.vip{border-color:#D9B24A;background:linear-gradient(160deg,#FFFDF6,#FBF3DC);}
+.vip-tag{font-size:10px;font-weight:800;letter-spacing:.1em;color:#5A4410;background:linear-gradient(90deg,#E8C86A,#C99A2E);padding:2px 8px;border-radius:999px;white-space:nowrap;}
+.lookup-qr.vip{display:inline-block;background:linear-gradient(150deg,#FFF8E4,#F3DFA0);padding:10px;border-radius:6px;box-shadow:0 0 0 2px #B8912F;}
+
 /* loading / empty */
 .loading{padding:48px 0;text-align:center;color:var(--warm-gray);}
 .spinner{width:28px;height:28px;border:3px solid var(--hairline);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
@@ -822,9 +844,14 @@ async function confirmOrder() {
 function openReserveEvent(index) {
   const e = eventos[index];
   if (!e) return;
-  reserveCtx = { kind: 'evento', index, type: (e.Tipo || 'FUNCIÓN').toUpperCase(), title: e.Titulo, meta: eventDate(e) };
+  reserveCtx = { kind: 'evento', index, type: (e.Tipo || 'FUNCIÓN').toUpperCase(), title: e.Titulo, meta: eventDate(e), pase: 'General' };
   renderReserveForm();
   openModal('reserveModal');
+}
+function selectPase(btn, tipo) {
+  if (reserveCtx) reserveCtx.pase = tipo;
+  document.querySelectorAll('.pase-opt').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
 }
 function openExperience(key) {
   const x = EXP[key];
@@ -859,11 +886,26 @@ function renderReserveForm() {
     <label class="field">EMAIL<input id="rEmail" type="email" placeholder="tu@email.com" autocomplete="email"></label>`;
 
   if (c.kind === 'evento') {
-    const disp = Math.max(1, available(eventos[c.index]));
+    const e = eventos[c.index];
+    const disp = Math.max(1, available(e));
     let opts = '';
     for (let i = 1; i <= Math.min(disp, 4); i++) opts += `<option value="${i}">${i} lugar${i > 1 ? 'es' : ''}</option>`;
+    const vipPrice = parseFloat(e.Precio_VIP) || 0;
+    const paseSel = vipPrice > 0 ? `
+      <div class="field-label">TIPO DE PASE</div>
+      <div class="pase-opts">
+        <button type="button" class="pase-opt on" data-pase="General" onclick="selectPase(this,'General')">
+          <span class="po-name">General</span>
+          <span class="po-desc">Entrada estándar</span>
+        </button>
+        <button type="button" class="pase-opt vip" data-pase="VIP" onclick="selectPase(this,'VIP')">
+          <span class="po-name">👑 VIP · $${vipPrice.toLocaleString()}</span>
+          <span class="po-desc">Mejores lugares · zona VIP · QR premium</span>
+        </button>
+      </div>` : '';
     body.innerHTML = head + contact +
       `<label class="field">LUGARES<select id="rSeats">${opts}</select></label>
+       ${paseSel}
        <button type="button" class="btn-primary" id="rSubmit" style="margin-top:8px;" onclick="submitReserve()">CONFIRMAR RESERVA</button>`;
   } else {
     const x = EXP[c.expKey];
@@ -912,15 +954,18 @@ async function submitReserve() {
     if (c.kind === 'evento') {
       const e = eventos[c.index];
       const code = 'TRK-' + Date.now().toString(36).toUpperCase().slice(-6);
+      const vipPrice = parseFloat(e.Precio_VIP) || 0;
+      const esVip = vipPrice > 0 && c.pase === 'VIP';
       const data = {
         ID_Evento: e.ID_Evento, Titulo_Evento: e.Titulo, Nombre: name, Telefono: phone, Email: email,
-        Cantidad_Personas: String(seats), Codigo_Confirmacion: code, Notas: '',
+        Cantidad_Personas: String(seats), Codigo_Confirmacion: code, Notas: esVip ? 'Pase VIP' : '',
         Fecha_Reserva: new Date().toISOString().split('T')[0], Estado: 'Confirmada',
+        Tipo_Pase: esVip ? 'VIP' : 'General', Precio_VIP: esVip ? String(vipPrice) : '',
       };
       const resp = await apiPost(data);
       if (resp.status === 'ok') {
         if (resp.disponible != null) e.Reservas_Confirmadas = String((parseInt(e.Cupo_Max) || 0) - resp.disponible);
-        showReserveConfirmation(e, code, seats);
+        showReserveConfirmation(e, code, seats, esVip);
         renderEvents(); renderFeatured();
       } else if (resp.status === 'full') {
         btn.disabled = false; btn.textContent = 'CONFIRMAR RESERVA';
@@ -944,19 +989,24 @@ async function submitReserve() {
   }
 }
 
-function showReserveConfirmation(e, code, seats) {
+function showReserveConfirmation(e, code, seats, vip) {
+  const serif = vip ? 'Tu lugar de honor te espera' : 'Nos vemos en la función';
+  const ribbon = vip ? `<div class="vip-ribbon">👑 PASE VIP</div>` : '';
+  const vipNote = vip ? `<p class="vip-note">Mejores lugares · Zona VIP</p>` : '';
   document.getElementById('reserveBody').innerHTML = `
-    <div class="confirm">
+    <div class="confirm${vip ? ' confirm-vip' : ''}">
       <div class="popcorn" aria-hidden="true"><span>🍿</span><span>🍿</span><span>🍿</span></div>
-      <div class="confirm-serif">Nos vemos en la función</div>
+      <div class="confirm-serif">${serif}</div>
       <h2 class="confirm-h2">Reserva confirmada</h2>
       <p class="confirm-sub">${esc(e.Titulo)} · ${eventDate(e)} · ${seats} lugar${seats > 1 ? 'es' : ''}</p>
+      ${ribbon}
       <div class="qr-box" id="qrBox"></div>
+      ${vipNote}
       <div class="code-box"><div class="code-label">TU CÓDIGO</div><div class="code-val">${esc(code)}</div></div>
       <p class="confirm-note">Preséntalo en taquilla. Toma captura para no perderlo.</p>
       <div style="margin-top:10px;"><button type="button" class="cal-link" onclick="addToCalendar(${eventos.indexOf(e)})">＋ AGREGAR AL CALENDARIO</button></div>
     </div>`;
-  makeQR('qrBox', `TRIKLES|${code}|${e.ID_Evento}|${esc(e.Titulo)}|${seats}`, 168);
+  makeQR('qrBox', `TRIKLES|${code}|${e.ID_Evento}|${esc(e.Titulo)}|${seats}|${vip ? 'VIP' : 'GEN'}`, 168, vip);
 }
 function showSolicitudConfirmation(x, seats) {
   document.getElementById('reserveBody').innerHTML = `
@@ -993,9 +1043,10 @@ async function doLookup() {
         const estado = (r.Estado || 'Pendiente').trim().toUpperCase();
         const cant = r.Cantidad_Personas || 1;
         const code = r.Codigo_Confirmacion || '—';
-        return `<div class="lookup-card">
+        const vip = r.Tipo_Pase === 'VIP';
+        return `<div class="lookup-card${vip ? ' vip' : ''}">
           <div>
-            <div class="lt">${esc(r.Titulo_Evento || 'Evento')}</div>
+            <div class="lt">${esc(r.Titulo_Evento || 'Evento')}${vip ? ' <span class="vip-tag">👑 VIP</span>' : ''}</div>
             <div class="lm">Reservado el ${formatDate(r.Fecha_Reserva)} · ${esc(String(cant))} lugar${parseInt(cant) > 1 ? 'es' : ''}</div>
             ${code !== '—' ? `<div class="lookup-qr" id="lqr_${i}"></div>` : ''}
           </div>
@@ -1006,7 +1057,7 @@ async function doLookup() {
         </div>`;
       }).join('');
       setTimeout(() => reservas.forEach((r, i) => {
-        if (r.Codigo_Confirmacion) makeQR(`lqr_${i}`, `TRIKLES|${r.Codigo_Confirmacion}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}`, 120);
+        if (r.Codigo_Confirmacion) makeQR(`lqr_${i}`, `TRIKLES|${r.Codigo_Confirmacion}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}|${r.Tipo_Pase === 'VIP' ? 'VIP' : 'GEN'}`, 120, r.Tipo_Pase === 'VIP');
       }), 80);
     }
   } catch (err) {
@@ -1117,11 +1168,13 @@ function eventDate(e) {
   if (e.Hora_Inicio) out += (out ? ' · ' : '') + e.Hora_Inicio;
   return out || '—';
 }
-function makeQR(boxId, text, size) {
+function makeQR(boxId, text, size, vip) {
   const box = document.getElementById(boxId);
   if (!box || typeof QRCode === 'undefined') return;
   box.innerHTML = '';
-  new QRCode(box, { text, width: size, height: size, colorDark: '#171511', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  // VIP: QR en tono dorado oscuro (contrasta bien, sigue escaneando) sobre marco premium.
+  new QRCode(box, { text, width: size, height: size, colorDark: vip ? '#6b4e12' : '#171511', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  box.classList.toggle('vip', !!vip);
 }
 let toastTimer = null;
 function toast(msg, type = '') {

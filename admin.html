@@ -831,6 +831,8 @@ function openEventForm(i){
       <label class="field">TIPO<input id="f_Tipo" type="text" placeholder="Película, Documental…" value="${esc(e.Tipo||'')}"></label>
       <label class="field">PRECIO (MXN)<input id="f_Precio_MXN" type="number" min="0" value="${esc(e.Precio_MXN||'0')}"></label>
     </div>
+    <label class="field">👑 PRECIO VIP (opcional)<input id="f_Precio_VIP" type="number" min="0" placeholder="Ej. 150" value="${esc(e.Precio_VIP||'')}">
+      <span class="hint">Da acceso a los mejores lugares (zona VIP) y un QR premium. Vacío o 0 = esta función no ofrece VIP.</span></label>
     <label class="field">DESCRIPCIÓN<textarea id="f_Descripcion">${esc(e.Descripcion||'')}</textarea></label>
     <div class="grid2">
       <label class="field">FECHA<input id="f_Fecha" type="date" value="${esc(e.Fecha||'')}"></label>
@@ -861,7 +863,7 @@ async function saveEvent(){
   if(uploading){ toast('Espera a que termine de subir la imagen.','error'); return; }
   const ev={ Titulo:val('f_Titulo'), Tipo:val('f_Tipo'), Descripcion:val('f_Descripcion'),
     Fecha:val('f_Fecha'), Hora_Inicio:val('f_Hora_Inicio'), Duracion_Min:val('f_Duracion_Min'),
-    Precio_MXN:val('f_Precio_MXN'), Cupo_Max:val('f_Cupo_Max'), Estado:val('f_Estado'),
+    Precio_MXN:val('f_Precio_MXN'), Precio_VIP:val('f_Precio_VIP'), Cupo_Max:val('f_Cupo_Max'), Estado:val('f_Estado'),
     Es_Privado:val('f_Es_Privado'), Imagen_URL:val('f_Imagen_URL') };
   const id=val('f_ID_Evento'); if(id) ev.ID_Evento=id;
   if(!ev.Titulo){ toast('Ponle un título.','error'); return; }
