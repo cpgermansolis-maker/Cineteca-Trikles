@@ -34,7 +34,9 @@
   --amber:#B98A00; --warm-gray:#877F70; --mid-gray:#5C564A; --hairline:#E0D9C9;
   --input-border:#D6CFBE; --beige:#ECE7DB; --cream-dim:#C9C0AC; --hairline-dark:#3A352B;
   --light-on-dark:#B5AD9D; --gray-on-dark:#8A8275;
-  --moss:#3f5a34; --spore:#e8b96a;
+  /* Temporada: Fiesta Mexicana / mes patrio */
+  --moss:#0B7A3D; --spore:#FFD23F;
+  --papel1:#E4007C; --papel2:#00A8E1; --papel3:#FFC61E; --papel4:#0BAA4B; --papel5:#FF6B1A; --papel6:#8E2DA8;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 html{scroll-behavior:smooth;}
@@ -87,10 +89,15 @@ button{font-family:inherit;}
 .mq-dot{color:var(--red);}
 .mq-pop{color:var(--yellow);}
 
-/* ============ TEMA DE TEMPORADA · Hongosto / Reino Fungi ============ */
+/* ============ TEMA DE TEMPORADA · Fiesta Mexicana / Mes Patrio ============ */
 .season-bar{background:var(--moss);color:var(--cream);text-align:center;font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:9px 16px;line-height:1.4;}
 .season-bar b{color:var(--spore);}
-.hero-kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--moss);background:rgba(63,90,52,.10);border:1px solid var(--moss);border-radius:2px;padding:7px 14px;margin-bottom:22px;animation:fadeUp .7s .04s ease both;}
+.hero-kicker{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--moss);background:rgba(11,122,61,.10);border:1px solid var(--moss);border-radius:2px;padding:7px 14px;margin-bottom:22px;animation:fadeUp .7s .04s ease both;}
+/* Papel picado */
+.papel{display:flex;justify-content:center;gap:1px;background:var(--ink);overflow:hidden;line-height:0;padding:0 4px;}
+.papel i{flex:1 1 auto;min-width:20px;max-width:46px;height:30px;position:relative;display:block;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%);}
+.papel i::before{content:"";position:absolute;top:6px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.55);}
+.papel i::after{content:"";position:absolute;top:15px;left:50%;transform:translateX(-50%);width:16px;height:3px;border-radius:2px;background:rgba(255,255,255,.45);}
 .hero-kicker .ball{font-size:14px;}
 
 /* ============ SECTION LABEL ROW ============ */
@@ -336,8 +343,9 @@ button{font-family:inherit;}
 </head>
 <body>
 
-<!-- ============ BANDA DE TEMPORADA · HONGOSTO ============ -->
-<div class="season-bar">🍄 <b>Hongosto</b> · el reino fungi toma la casa del arte 🌿</div>
+<!-- ============ BANDA DE TEMPORADA · FIESTA MEXICANA ============ -->
+<div class="season-bar">🎉 <b>¡Viva México!</b> · fiestas patrias en la casa del arte 🇲🇽</div>
+<div class="papel" id="papel" aria-hidden="true"></div>
 
 <!-- ============ HEADER ============ -->
 <header class="site-header">
@@ -359,7 +367,7 @@ button{font-family:inherit;}
 <!-- ============ HERO ============ -->
 <section id="inicio" class="hero">
   <img class="hero-logo" id="heroLogo" src="logo.png.jpeg" alt="Cineteca Trikles">
-  <div class="hero-kicker"><span class="ball">🍄</span> Hongosto · Reino Fungi</div>
+  <div class="hero-kicker"><span class="ball">🇲🇽</span> Septiembre Mexicano · Fiestas Patrias</div>
   <h1 class="hero-title">El cine como<br><span class="serif">excusa</span> para<br>encontrarnos.</h1>
   <div class="hero-row">
     <p class="hero-intro" id="heroIntro">Cartelera curada, funciones privadas y eventos culturales en la casa del arte.</p>
@@ -380,18 +388,18 @@ button{font-family:inherit;}
 <div class="marquee" aria-hidden="true">
   <div class="marquee-track">
     <div class="marquee-group">
-      <span class="mq-word">HONGOSTO</span><span class="mq-pop">🍄</span>
-      <span class="mq-serif">La casa del arte</span><span>🌿</span>
-      <span class="mq-word">REINO FUNGI</span><span class="mq-dot">●</span>
-      <span class="mq-word">CINE Y NATURALEZA</span><span class="mq-dot">●</span>
-      <span class="mq-word">CINETECA TRIKLES</span><span class="mq-pop">🍄</span>
+      <span class="mq-word">¡VIVA MÉXICO!</span><span class="mq-pop">🎉</span>
+      <span class="mq-serif">La casa del arte</span><span>🇲🇽</span>
+      <span class="mq-word">FIESTAS PATRIAS</span><span class="mq-dot">●</span>
+      <span class="mq-word">CINE MEXICANO</span><span class="mq-dot">●</span>
+      <span class="mq-word">CINETECA TRIKLES</span><span class="mq-pop">🪅</span>
     </div>
     <div class="marquee-group">
-      <span class="mq-word">HONGOSTO</span><span class="mq-pop">🍄</span>
-      <span class="mq-serif">La casa del arte</span><span>🌿</span>
-      <span class="mq-word">REINO FUNGI</span><span class="mq-dot">●</span>
-      <span class="mq-word">CINE Y NATURALEZA</span><span class="mq-dot">●</span>
-      <span class="mq-word">CINETECA TRIKLES</span><span class="mq-pop">🍄</span>
+      <span class="mq-word">¡VIVA MÉXICO!</span><span class="mq-pop">🎉</span>
+      <span class="mq-serif">La casa del arte</span><span>🇲🇽</span>
+      <span class="mq-word">FIESTAS PATRIAS</span><span class="mq-dot">●</span>
+      <span class="mq-word">CINE MEXICANO</span><span class="mq-dot">●</span>
+      <span class="mq-word">CINETECA TRIKLES</span><span class="mq-pop">🪅</span>
     </div>
   </div>
 </div>
@@ -1049,6 +1057,16 @@ function waComprobante(code, titulo) {
   const msg = `Hola, ya hice mi transferencia SPEI para mi reserva ${code}${titulo ? ' (' + titulo + ')' : ''}. Aquí les mando mi comprobante de pago. 🎬`;
   return `https://wa.me/${n}?text=${encodeURIComponent(msg)}`;
 }
+// Papel picado (mes patrio): banderines de colores repartidos en la banda.
+(function () {
+  const cont = document.getElementById('papel');
+  if (!cont) return;
+  const cols = ['--papel1', '--papel2', '--papel3', '--papel4', '--papel5', '--papel6'];
+  const n = Math.min(28, Math.max(10, Math.round(window.innerWidth / 46)));
+  let h = '';
+  for (let i = 0; i < n; i++) h += `<i style="background:var(${cols[i % cols.length]})"></i>`;
+  cont.innerHTML = h;
+})();
 function showSolicitudConfirmation(x, seats) {
   document.getElementById('reserveBody').innerHTML = `
     <div class="confirm">

@@ -12,7 +12,9 @@
 <style>
 :root{
   --cream:#F6F3EC; --surface:#FFFDF8; --ink:#171511; --red:#C8311B; --yellow:#F2B705;
-  --warm-gray:#877F70; --mid-gray:#5C564A; --hairline:#E0D9C9; --beige:#ECE7DB; --green:#2f7d4f;
+  --warm-gray:#877F70; --mid-gray:#5C564A; --hairline:#E0D9C9; --beige:#ECE7DB; --green:#0B7A3D;
+  /* Papel picado (mes patrio) */
+  --papel1:#E4007C; --papel2:#00A8E1; --papel3:#FFC61E; --papel4:#0BAA4B; --papel5:#FF6B1A; --papel6:#8E2DA8;
 }
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
 html,body{height:100%;}
@@ -147,12 +149,18 @@ button{font-family:inherit;cursor:pointer;}
 .sucpill{border:2px solid var(--hairline);background:var(--surface);color:var(--ink,#2b2b2b);font-weight:800;font-size:14px;padding:8px 16px;border-radius:999px;cursor:pointer;transition:transform .07s;}
 .sucpill:active{transform:translateY(2px);}
 .sucpill.on{border-color:var(--red);background:var(--red);color:#fff;}
+/* Papel picado (mes patrio) */
+.papel{display:flex;justify-content:center;gap:1px;background:var(--ink);overflow:hidden;line-height:0;padding:0 4px;}
+.papel i{flex:1 1 auto;min-width:20px;max-width:46px;height:28px;position:relative;display:block;clip-path:polygon(0 0,100% 0,100% 60%,50% 100%,0 60%);}
+.papel i::before{content:"";position:absolute;top:6px;left:50%;transform:translateX(-50%);width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.55);}
+.papel i::after{content:"";position:absolute;top:14px;left:50%;transform:translateX(-50%);width:15px;height:3px;border-radius:2px;background:rgba(255,255,255,.45);}
 </style>
 </head>
 <body>
 
+<div class="papel" id="papel" aria-hidden="true"></div>
 <div class="top">
-  <div class="brand">🍳 Restaurante Trikles <small class="serif">arma tu plato</small></div>
+  <div class="brand">🎉 Restaurante Trikles <small class="serif">arma tu plato</small></div>
   <button class="btn3d ghost back hidden" id="btnBack" onclick="goMenu()">← Menú</button>
 </div>
 
@@ -228,6 +236,14 @@ function getImageUrl(v){
 let toastT=null;
 function toast(m){ const e=document.getElementById('toast'); e.textContent=m; e.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>e.classList.remove('show'),2600); }
 
+// Papel picado (mes patrio)
+(function(){ const c=document.getElementById('papel'); if(!c) return;
+  const cols=['--papel1','--papel2','--papel3','--papel4','--papel5','--papel6'];
+  const n=Math.min(28,Math.max(10,Math.round(window.innerWidth/46)));
+  let h=''; for(let i=0;i<n;i++) h+=`<i style="background:var(${cols[i%cols.length]})"></i>`;
+  c.innerHTML=h;
+})();
+
 // Vibración (haptic) en cada toque de botón 3D
 document.addEventListener('pointerdown', e=>{ if(e.target.closest('.btn3d,.step,.dish')) { try{ navigator.vibrate && navigator.vibrate(12); }catch(_){} } bumpIdle(); }, {passive:true});
 
@@ -252,7 +268,7 @@ async function loadMenu(){
       .map(p=>({ id:p.id, Nombre:p.nombre, Precio:p.precio, Seccion:p.categoria, Tag:'', Nota:'', Emoji:'', Imagen_URL:p.imagen }));
 
     // 2) Platillos "arma tu plato" = plantillas (estructura), precios del POS
-    const pl = await (await fetch(APPS_SCRIPT_URL+'?action=plantillas')).json();
+    const pl = await (await fetch(APPS_SCRIPT_URL+'?action=plantillas&sucursal='+encodeURIComponent(SUC))).json();
     MENU = ((pl&&pl.plantillas)||[]).map(t=>{
       const ings = (t.items||[]).map(it=>{ const pp=posById[it.pos_id]; if(!pp) return null; return {
         id:it.pos_id, Nombre:pp.nombre, Precio:pp.precio, Unidad:'', Emoji:'', Paso:1,
