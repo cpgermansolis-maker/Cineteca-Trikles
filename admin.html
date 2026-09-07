@@ -225,7 +225,10 @@ textarea{min-height:70px;resize:vertical;}
             <label class="field">BANCO<input id="pg_Banco" type="text"></label>
             <label class="field">TITULAR<input id="pg_Titular" type="text"></label>
           </div>
-          <label class="field">TARJETA / CLABE<input id="pg_Numero" type="text"></label>
+          <div class="grid2">
+            <label class="field">TARJETA / CLABE<input id="pg_Numero" type="text"></label>
+            <label class="field">WHATSAPP (comprobante)<input id="pg_WhatsApp" type="text" placeholder="2461794919"></label>
+          </div>
           <label class="field">NOTA / INSTRUCCIONES<textarea id="pg_Nota"></textarea></label>
           <button class="btn btn-ink btn-sm" onclick="savePago()">Guardar datos de pago</button>
         </div>
@@ -233,9 +236,9 @@ textarea{min-height:70px;resize:vertical;}
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
         <input type="search" id="resBuscar" placeholder="🔍 Buscar nombre, email, teléfono, código…" oninput="renderReservas(lastReservas)" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--input-border);border-radius:4px;">
         <select id="resFiltro" onchange="renderReservas(lastReservas)" style="width:auto;">
+          <option value="todas" selected>Todas</option>
           <option value="pendientes">Pendientes de pago</option>
           <option value="pagadas">Pagadas</option>
-          <option value="todas">Todas</option>
         </select>
       </div>
       <div id="reservasList"><div class="empty"><div class="spinner"></div></div></div>
@@ -1022,7 +1025,7 @@ function esPagada(r){ return String(r.Estado_Pago||'')!=='Pendiente'; } // '' (r
 function renderReservas(list){
   list=list||[];
   const q=(document.getElementById('resBuscar')?.value||'').toLowerCase().trim();
-  const filtro=document.getElementById('resFiltro')?.value||'pendientes';
+  const filtro=document.getElementById('resFiltro')?.value||'todas';
   let arr=list.filter(r=>{
     if(filtro==='pendientes' && esPagada(r)) return false;
     if(filtro==='pagadas' && !esPagada(r)) return false;
@@ -1079,7 +1082,7 @@ async function cancelReserva(cod){
 function renderPago(p){
   _pago=p||{};
   const v=document.getElementById('pagoView');
-  if(v) v.innerHTML = (p.Pago_Banco||p.Pago_Numero) ? `${esc(p.Pago_Banco||'')} · ${esc(p.Pago_Titular||'')} · <b>${esc(p.Pago_Numero||'')}</b>` : 'Sin datos de pago aún.';
+  if(v) v.innerHTML = (p.Pago_Banco||p.Pago_Numero) ? `${esc(p.Pago_Banco||'')} · ${esc(p.Pago_Titular||'')} · <b>${esc(p.Pago_Numero||'')}</b>${p.Pago_WhatsApp?` · 📲 ${esc(p.Pago_WhatsApp)}`:''}` : 'Sin datos de pago aún.';
 }
 function togglePagoEdit(){
   const e=document.getElementById('pagoEdit');
@@ -1087,13 +1090,14 @@ function togglePagoEdit(){
     document.getElementById('pg_Banco').value=_pago.Pago_Banco||'';
     document.getElementById('pg_Titular').value=_pago.Pago_Titular||'';
     document.getElementById('pg_Numero').value=_pago.Pago_Numero||'';
+    document.getElementById('pg_WhatsApp').value=_pago.Pago_WhatsApp||'';
     document.getElementById('pg_Nota').value=_pago.Pago_Nota||'';
     e.style.display='block';
   } else e.style.display='none';
 }
 async function savePago(){
   try{
-    const r=await api({action:'saveConfigPago', token, Pago_Banco:val('pg_Banco'), Pago_Titular:val('pg_Titular'), Pago_Numero:val('pg_Numero'), Pago_Nota:val('pg_Nota')});
+    const r=await api({action:'saveConfigPago', token, Pago_Banco:val('pg_Banco'), Pago_Titular:val('pg_Titular'), Pago_Numero:val('pg_Numero'), Pago_WhatsApp:val('pg_WhatsApp'), Pago_Nota:val('pg_Nota')});
     if(r.status==='ok'){ toast('Datos de pago guardados.','success'); document.getElementById('pagoEdit').style.display='none'; pollReservas(false); }
     else if(/sesión/i.test(r.message||'')) sessionExpired();
     else toast(r.message||'No se pudo.','error');
