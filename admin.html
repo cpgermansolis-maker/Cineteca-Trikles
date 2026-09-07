@@ -1057,7 +1057,12 @@ function resCard(r){
 async function marcarPago(cod, pagado){
   try{
     const r=await api({action:'marcarPago', token, codigo:cod, pagado:pagado});
-    if(r.status==='ok'){ toast(pagado?'Pago confirmado ✓ — su QR ya está activo.':'Pago quitado.','success'); pollReservas(false); }
+    if(r.status==='ok'){
+      if(!pagado){ toast('Pago quitado.','success'); }
+      else if(r.emailEnviado){ toast('Pago confirmado ✓ — QR enviado por correo.','success'); }
+      else { toast('Pago confirmado ✓, pero el correo no salió'+(r.emailError?': '+r.emailError:'. ¿Autorizaste el correo? (función autorizarQR)')+' — el cliente igual ve su QR en “Mi reserva”.','error'); }
+      pollReservas(false);
+    }
     else if(/sesión/i.test(r.message||'')) sessionExpired();
     else toast(r.message||'No se pudo.','error');
   }catch(e){ toast('Error de conexión.','error'); }
