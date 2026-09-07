@@ -280,6 +280,18 @@ button{font-family:inherit;}
 .vip-tag{font-size:10px;font-weight:800;letter-spacing:.1em;color:#5A4410;background:linear-gradient(90deg,#E8C86A,#C99A2E);padding:2px 8px;border-radius:999px;white-space:nowrap;}
 .lookup-qr.vip{display:inline-block;background:linear-gradient(150deg,#FFF8E4,#F3DFA0);padding:10px;border-radius:6px;box-shadow:0 0 0 2px #B8912F;}
 
+/* ===== Pago SPEI ===== */
+.pay-box{text-align:left;border:1px solid var(--ink);border-radius:6px;padding:16px 18px;margin:4px 0 16px;background:var(--surface);}
+.pay-h{font-size:13px;font-weight:800;letter-spacing:.04em;margin-bottom:10px;}
+.pay-row{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:5px 0;border-top:1px solid var(--hairline);}
+.pay-row span{color:var(--warm-gray);}
+.pay-row .pay-num{font-size:17px;letter-spacing:.06em;}
+.copy-btn{margin-top:10px;font-size:12px;font-weight:700;letter-spacing:.08em;padding:9px 16px;background:var(--ink);color:var(--cream);border:none;border-radius:2px;cursor:pointer;text-transform:uppercase;}
+.copy-btn:hover{background:var(--red);}
+.pay-note{font-size:12.5px;color:var(--warm-gray);margin-top:10px;line-height:1.4;}
+.pay-pending{margin-top:10px;font-size:12.5px;font-weight:700;color:#8A6A16;background:#FBF3DC;border:1px dashed #D9B24A;border-radius:6px;padding:10px 12px;line-height:1.4;}
+.pay-pending span{font-weight:500;color:var(--warm-gray);}
+
 /* loading / empty */
 .loading{padding:48px 0;text-align:center;color:var(--warm-gray);}
 .spinner{width:28px;height:28px;border:3px solid var(--hairline);border-top-color:var(--ink);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
@@ -990,23 +1002,35 @@ async function submitReserve() {
 }
 
 function showReserveConfirmation(e, code, seats, vip) {
-  const serif = vip ? 'Tu lugar de honor te espera' : 'Nos vemos en la función';
+  const p = (typeof config === 'object' && config) ? config : {};
+  const banco = p.Pago_Banco || 'Banco Azteca';
+  const titular = p.Pago_Titular || '';
+  const numero = p.Pago_Numero || '';
+  const nota = p.Pago_Nota || 'Transfiere por SPEI y envíanos tu comprobante por WhatsApp. Tu QR se activa cuando confirmemos el pago.';
   const ribbon = vip ? `<div class="vip-ribbon">👑 PASE VIP</div>` : '';
-  const vipNote = vip ? `<p class="vip-note">Mejores lugares · Zona VIP</p>` : '';
   document.getElementById('reserveBody').innerHTML = `
     <div class="confirm${vip ? ' confirm-vip' : ''}">
       <div class="popcorn" aria-hidden="true"><span>🍿</span><span>🍿</span><span>🍿</span></div>
-      <div class="confirm-serif">${serif}</div>
-      <h2 class="confirm-h2">Reserva confirmada</h2>
+      <div class="confirm-serif">Ya casi</div>
+      <h2 class="confirm-h2">Reserva registrada</h2>
       <p class="confirm-sub">${esc(e.Titulo)} · ${eventDate(e)} · ${seats} lugar${seats > 1 ? 'es' : ''}</p>
       ${ribbon}
-      <div class="qr-box" id="qrBox"></div>
-      ${vipNote}
+      <div class="pay-box">
+        <div class="pay-h">💳 Paga por transferencia (SPEI)</div>
+        <div class="pay-row"><span>Banco</span><b>${esc(banco)}</b></div>
+        ${titular ? `<div class="pay-row"><span>Titular</span><b>${esc(titular)}</b></div>` : ''}
+        <div class="pay-row"><span>Tarjeta / CLABE</span><b class="pay-num">${esc(numero)}</b></div>
+        <button type="button" class="copy-btn" onclick="copyPago('${esc(numero).replace(/\s/g, '')}')">Copiar número</button>
+        <p class="pay-note">${esc(nota)}</p>
+      </div>
       <div class="code-box"><div class="code-label">TU CÓDIGO</div><div class="code-val">${esc(code)}</div></div>
-      <p class="confirm-note">Preséntalo en taquilla. Toma captura para no perderlo.</p>
+      <p class="confirm-note">Tu <b>QR</b> se activa en <b>“Mi reserva”</b> en cuanto confirmemos tu pago. Guarda tu código.</p>
       <div style="margin-top:10px;"><button type="button" class="cal-link" onclick="addToCalendar(${eventos.indexOf(e)})">＋ AGREGAR AL CALENDARIO</button></div>
     </div>`;
-  makeQR('qrBox', `TRIKLES|${code}|${e.ID_Evento}|${esc(e.Titulo)}|${seats}|${vip ? 'VIP' : 'GEN'}`, 168, vip);
+}
+function copyPago(num) {
+  try { navigator.clipboard.writeText(num); toast('Número copiado ✓', 'success'); }
+  catch (_) { toast('Cópialo manualmente'); }
 }
 function showSolicitudConfirmation(x, seats) {
   document.getElementById('reserveBody').innerHTML = `
@@ -1044,20 +1068,26 @@ async function doLookup() {
         const cant = r.Cantidad_Personas || 1;
         const code = r.Codigo_Confirmacion || '—';
         const vip = r.Tipo_Pase === 'VIP';
+        const pagada = String(r.Estado_Pago || '') !== 'Pendiente'; // '' (reservas viejas) = ya no pendiente
+        const cfg = (typeof config === 'object' && config) ? config : {};
+        const qrZone = code === '—' ? '' : (pagada
+          ? `<div class="lookup-qr" id="lqr_${i}"></div>`
+          : `<div class="pay-pending">⏳ Pendiente de pago<br><span>SPEI a ${esc(cfg.Pago_Numero || '')}${cfg.Pago_Banco ? ' (' + esc(cfg.Pago_Banco) + ')' : ''} · tu QR se activa al confirmar</span></div>`);
         return `<div class="lookup-card${vip ? ' vip' : ''}">
           <div>
             <div class="lt">${esc(r.Titulo_Evento || 'Evento')}${vip ? ' <span class="vip-tag">👑 VIP</span>' : ''}</div>
             <div class="lm">Reservado el ${formatDate(r.Fecha_Reserva)} · ${esc(String(cant))} lugar${parseInt(cant) > 1 ? 'es' : ''}</div>
-            ${code !== '—' ? `<div class="lookup-qr" id="lqr_${i}"></div>` : ''}
+            ${qrZone}
           </div>
           <div>
-            <div class="ls">${esc(estado)}</div>
+            <div class="ls">${pagada ? esc(estado) : 'POR PAGAR'}</div>
             <div class="lc">${esc(code)}</div>
           </div>
         </div>`;
       }).join('');
       setTimeout(() => reservas.forEach((r, i) => {
-        if (r.Codigo_Confirmacion) makeQR(`lqr_${i}`, `TRIKLES|${r.Codigo_Confirmacion}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}|${r.Tipo_Pase === 'VIP' ? 'VIP' : 'GEN'}`, 120, r.Tipo_Pase === 'VIP');
+        const pagada = String(r.Estado_Pago || '') !== 'Pendiente';
+        if (r.Codigo_Confirmacion && pagada) makeQR(`lqr_${i}`, `TRIKLES|${r.Codigo_Confirmacion}|${r.ID_Evento || ''}|${r.Nombre || ''}|${r.Cantidad_Personas || 1}|${r.Tipo_Pase === 'VIP' ? 'VIP' : 'GEN'}`, 120, r.Tipo_Pase === 'VIP');
       }), 80);
     }
   } catch (err) {

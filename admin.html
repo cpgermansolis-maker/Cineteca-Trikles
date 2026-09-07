@@ -167,6 +167,7 @@ textarea{min-height:70px;resize:vertical;}
       <button class="tab active" id="tabCartelera" onclick="showTab('cartelera')">Cartelera</button>
       <button class="tab" id="tabDulceria" onclick="showTab('dulceria')">Dulcería</button>
       <button class="tab" id="tabMenu" onclick="showTab('menu')">🍔 Menú</button>
+      <button class="tab" id="tabReservas" onclick="showTab('reservas')">🎟️ Reservas</button>
       <button class="tab" id="tabFinanzas" onclick="showTab('finanzas')">Finanzas</button>
       <button class="tab" id="tabCocina" onclick="showTab('cocina')">🍳 Cocina</button>
     </div>
@@ -206,6 +207,38 @@ textarea{min-height:70px;resize:vertical;}
         <button class="btn btn-out btn-sm" onclick="loadStats()">Actualizar</button>
       </div>
       <div id="statsBody"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+    <div id="panelReservas" style="display:none;">
+      <div class="panel-head">
+        <span class="label">Reservas · en vivo <span id="reservasLive" style="color:var(--green);font-weight:800;margin-left:6px;"></span></span>
+        <button class="btn btn-out btn-sm" onclick="pollReservas(true)">Actualizar</button>
+      </div>
+      <div style="border:1px solid var(--hairline);border-radius:8px;padding:12px 14px;margin-bottom:14px;background:var(--surface);">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-weight:800;font-size:13px;">💳 Datos de pago (SPEI) que ve el cliente</span>
+          <button class="btn btn-out btn-sm" onclick="togglePagoEdit()">Editar</button>
+        </div>
+        <div id="pagoView" class="hint" style="margin-top:6px;">—</div>
+        <div id="pagoEdit" style="display:none;margin-top:10px;">
+          <div class="grid2">
+            <label class="field">BANCO<input id="pg_Banco" type="text"></label>
+            <label class="field">TITULAR<input id="pg_Titular" type="text"></label>
+          </div>
+          <label class="field">TARJETA / CLABE<input id="pg_Numero" type="text"></label>
+          <label class="field">NOTA / INSTRUCCIONES<textarea id="pg_Nota"></textarea></label>
+          <button class="btn btn-ink btn-sm" onclick="savePago()">Guardar datos de pago</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
+        <input type="search" id="resBuscar" placeholder="🔍 Buscar nombre, email, teléfono, código…" oninput="renderReservas(lastReservas)" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--input-border);border-radius:4px;">
+        <select id="resFiltro" onchange="renderReservas(lastReservas)" style="width:auto;">
+          <option value="pendientes">Pendientes de pago</option>
+          <option value="pagadas">Pagadas</option>
+          <option value="todas">Todas</option>
+        </select>
+      </div>
+      <div id="reservasList"><div class="empty"><div class="spinner"></div></div></div>
     </div>
 
     <div id="panelCocina" style="display:none;">
@@ -376,13 +409,14 @@ async function loadAll(){
 
 // ===== TABS =====
 function showTab(t){
-  ['Cartelera','Dulceria','Menu','Finanzas','Cocina'].forEach(x=>{
+  ['Cartelera','Dulceria','Menu','Reservas','Finanzas','Cocina'].forEach(x=>{
     const tab = x.toLowerCase();
     document.getElementById('panel'+x).style.display = (tab===t)?'block':'none';
     document.getElementById('tab'+x).classList.toggle('active', tab===t);
   });
   if(t==='finanzas') loadStats();
   if(t==='menu') loadPlantillas();
+  if(t==='reservas') startReservas(); else stopReservas();
   if(t==='cocina') startCocina(); else stopCocina();
 }
 
@@ -968,6 +1002,97 @@ async function deleteProduct(i){
     else if(/sesión/i.test(r.message||'')) sessionExpired();
     else toast(r.message||'No se pudo borrar.','error');
   }catch(err){ toast('Error de conexión.','error'); }
+}
+
+// ===== RESERVAS (tiempo real) =====
+let reservaTimer=null, lastReservas=[], _pago={};
+function startReservas(){ pollReservas(true); if(reservaTimer)clearInterval(reservaTimer); reservaTimer=setInterval(()=>pollReservas(false),7000); document.getElementById('reservasLive').textContent='● EN VIVO'; }
+function stopReservas(){ if(reservaTimer){clearInterval(reservaTimer);reservaTimer=null;} const l=document.getElementById('reservasLive'); if(l)l.textContent=''; }
+async function pollReservas(showSpinner){
+  if(showSpinner) document.getElementById('reservasList').innerHTML='<div class="empty"><div class="spinner"></div></div>';
+  try{
+    const r=await api({action:'reservas', token});
+    if(r.status!=='ok'){ if(/sesión/i.test(r.message||'')){ stopReservas(); sessionExpired(); } return; }
+    if(r.pago) renderPago(r.pago);
+    lastReservas=r.reservas||[];
+    renderReservas(lastReservas);
+  }catch(err){ /* silencioso durante el sondeo */ }
+}
+function esPagada(r){ return String(r.Estado_Pago||'')!=='Pendiente'; } // '' (reservas viejas) = ya no pendiente
+function renderReservas(list){
+  list=list||[];
+  const q=(document.getElementById('resBuscar')?.value||'').toLowerCase().trim();
+  const filtro=document.getElementById('resFiltro')?.value||'pendientes';
+  let arr=list.filter(r=>{
+    if(filtro==='pendientes' && esPagada(r)) return false;
+    if(filtro==='pagadas' && !esPagada(r)) return false;
+    return true;
+  });
+  if(q) arr=arr.filter(r=> [r.Nombre_Miembro,r.Nombre,r.Email,r.Telefono,r.Codigo_Confirmacion,r.Titulo_Evento].some(v=>String(v||'').toLowerCase().includes(q)));
+  const el=document.getElementById('reservasList');
+  el.innerHTML = arr.length ? arr.map(resCard).join('') : '<div class="empty">Sin reservas en este filtro.</div>';
+}
+function resCard(r){
+  const nombre=esc(r.Nombre_Miembro||r.Nombre||'—');
+  const vip=(r.Tipo_Pase==='VIP');
+  const pagada=esPagada(r);
+  const cod=esc(r.Codigo_Confirmacion||'');
+  return `<div class="row">
+    <div style="flex:1;min-width:0;">
+      <div class="rtitle">${nombre} ${vip?'<span style="font-size:10px;font-weight:800;background:#C99A2E;color:#fff;padding:2px 7px;border-radius:999px;">👑 VIP</span>':''}</div>
+      <div class="rmeta">🎬 ${esc(r.Titulo_Evento||'—')} · ${esc(String(r.Cantidad_Personas||'1'))} lugar${parseInt(r.Cantidad_Personas)>1?'es':''} · ${esc(r.Fecha_Reserva||'')}</div>
+      <div class="rmeta">📧 ${esc(r.Email||'—')} · 📱 ${esc(r.Telefono||'—')} · código <b>${cod}</b>${vip&&r.Precio_VIP?` · VIP $${esc(String(r.Precio_VIP))}`:''}</div>
+    </div>
+    <div style="text-align:right;flex:none;">
+      <span class="pill ${pagada?'on':'off'}">${pagada?'PAGADA':'PENDIENTE'}</span>
+      <div class="ractions" style="margin-top:8px;justify-content:flex-end;">
+        ${pagada
+          ? `<button class="btn btn-out btn-sm" onclick="marcarPago('${cod}',false)">Quitar pago</button>`
+          : `<button class="btn btn-ink btn-sm" onclick="marcarPago('${cod}',true)">Marcar pagada</button>`}
+        <button class="btn btn-red btn-sm" onclick="cancelReserva('${cod}')">Cancelar</button>
+      </div>
+    </div>
+  </div>`;
+}
+async function marcarPago(cod, pagado){
+  try{
+    const r=await api({action:'marcarPago', token, codigo:cod, pagado:pagado});
+    if(r.status==='ok'){ toast(pagado?'Pago confirmado ✓ — su QR ya está activo.':'Pago quitado.','success'); pollReservas(false); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo.','error');
+  }catch(e){ toast('Error de conexión.','error'); }
+}
+async function cancelReserva(cod){
+  if(!confirm('¿Cancelar esta reserva (código '+cod+')? Se libera el lugar y no se puede deshacer.')) return;
+  try{
+    const r=await api({action:'cancelReserva', token, codigo:cod});
+    if(r.status==='ok'){ toast('Reserva cancelada.','success'); pollReservas(false); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo.','error');
+  }catch(e){ toast('Error de conexión.','error'); }
+}
+function renderPago(p){
+  _pago=p||{};
+  const v=document.getElementById('pagoView');
+  if(v) v.innerHTML = (p.Pago_Banco||p.Pago_Numero) ? `${esc(p.Pago_Banco||'')} · ${esc(p.Pago_Titular||'')} · <b>${esc(p.Pago_Numero||'')}</b>` : 'Sin datos de pago aún.';
+}
+function togglePagoEdit(){
+  const e=document.getElementById('pagoEdit');
+  if(e.style.display==='none'||!e.style.display){
+    document.getElementById('pg_Banco').value=_pago.Pago_Banco||'';
+    document.getElementById('pg_Titular').value=_pago.Pago_Titular||'';
+    document.getElementById('pg_Numero').value=_pago.Pago_Numero||'';
+    document.getElementById('pg_Nota').value=_pago.Pago_Nota||'';
+    e.style.display='block';
+  } else e.style.display='none';
+}
+async function savePago(){
+  try{
+    const r=await api({action:'saveConfigPago', token, Pago_Banco:val('pg_Banco'), Pago_Titular:val('pg_Titular'), Pago_Numero:val('pg_Numero'), Pago_Nota:val('pg_Nota')});
+    if(r.status==='ok'){ toast('Datos de pago guardados.','success'); document.getElementById('pagoEdit').style.display='none'; pollReservas(false); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo.','error');
+  }catch(e){ toast('Error de conexión.','error'); }
 }
 
 // ===== IMAGEN =====
