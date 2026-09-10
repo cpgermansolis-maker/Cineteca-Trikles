@@ -1043,6 +1043,7 @@ function resCard(r){
   const nombre=esc(r.Nombre_Miembro||r.Nombre||'—');
   const vip=(r.Tipo_Pase==='VIP');
   const pagada=esPagada(r);
+  const gratis=String(r.Estado_Pago||'')==='Gratis';
   const cod=esc(r.Codigo_Confirmacion||'');
   return `<div class="row">
     <div style="flex:1;min-width:0;">
@@ -1051,11 +1052,12 @@ function resCard(r){
       <div class="rmeta">📧 ${esc(r.Email||'—')} · 📱 ${esc(r.Telefono||'—')} · código <b>${cod}</b>${vip&&r.Precio_VIP?` · VIP $${esc(String(r.Precio_VIP))}`:''}</div>
     </div>
     <div style="text-align:right;flex:none;">
-      <span class="pill ${pagada?'on':'off'}">${pagada?'PAGADA':'PENDIENTE'}</span>
+      <span class="pill ${pagada?'on':'off'}">${gratis?'GRATIS':(pagada?'PAGADA':'PENDIENTE')}</span>
       <div class="ractions" style="margin-top:8px;justify-content:flex-end;">
-        ${pagada
-          ? `<button class="btn btn-out btn-sm" onclick="marcarPago('${cod}',false)">Quitar pago</button>`
-          : `<button class="btn btn-ink btn-sm" onclick="marcarPago('${cod}',true)">Marcar pagada</button>`}
+        ${gratis ? ''
+          : (pagada
+            ? `<button class="btn btn-out btn-sm" onclick="marcarPago('${cod}',false)">Quitar pago</button>`
+            : `<button class="btn btn-ink btn-sm" onclick="marcarPago('${cod}',true)">Marcar pagada</button>`)}
         <button class="btn btn-red btn-sm" onclick="cancelReserva('${cod}')">Cancelar</button>
       </div>
     </div>

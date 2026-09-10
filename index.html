@@ -302,6 +302,7 @@ button{font-family:inherit;}
 .wa-btn:hover{background:#1EBE5B;}
 .wa-btn:active{transform:translateY(2px);box-shadow:0 1px 0 #128C7E;}
 .wa-btn.wa-sm{font-size:12.5px;padding:9px 14px;margin-top:8px;box-shadow:0 2px 0 #128C7E;}
+.free-badge{display:inline-block;background:var(--moss);color:#fff;font-weight:800;font-size:13px;letter-spacing:.04em;padding:7px 18px;border-radius:999px;margin:2px 0 14px;}
 
 /* loading / empty */
 .loading{padding:48px 0;text-align:center;color:var(--warm-gray);}
@@ -980,6 +981,8 @@ async function submitReserve() {
       const code = 'TRK-' + Date.now().toString(36).toUpperCase().slice(-6);
       const vipPrice = parseFloat(e.Precio_VIP) || 0;
       const esVip = vipPrice > 0 && c.pase === 'VIP';
+      // Evento gratuito (precio 0 y no eligieron VIP): sin pago, QR al instante.
+      const esGratis = !esVip && (parseFloat(e.Precio_MXN) || 0) <= 0;
       const data = {
         ID_Evento: e.ID_Evento, Titulo_Evento: e.Titulo, Nombre: name, Telefono: phone, Email: email,
         Cantidad_Personas: String(seats), Codigo_Confirmacion: code, Notas: esVip ? 'Pase VIP' : '',
@@ -989,7 +992,7 @@ async function submitReserve() {
       const resp = await apiPost(data);
       if (resp.status === 'ok') {
         if (resp.disponible != null) e.Reservas_Confirmadas = String((parseInt(e.Cupo_Max) || 0) - resp.disponible);
-        showReserveConfirmation(e, code, seats, esVip);
+        showReserveConfirmation(e, code, seats, esVip, esGratis);
         renderEvents(); renderFeatured();
       } else if (resp.status === 'full') {
         btn.disabled = false; btn.textContent = 'CONFIRMAR RESERVA';
@@ -1013,7 +1016,24 @@ async function submitReserve() {
   }
 }
 
-function showReserveConfirmation(e, code, seats, vip) {
+function showReserveConfirmation(e, code, seats, vip, gratis) {
+  // Evento gratuito: confirmado al instante, con el QR listo (sin transferencia).
+  if (gratis) {
+    document.getElementById('reserveBody').innerHTML = `
+      <div class="confirm">
+        <div class="popcorn" aria-hidden="true"><span>🍿</span><span>🍿</span><span>🍿</span></div>
+        <div class="confirm-serif">Nos vemos en la función</div>
+        <h2 class="confirm-h2">Reserva confirmada</h2>
+        <p class="confirm-sub">${esc(e.Titulo)} · ${eventDate(e)} · ${seats} lugar${seats > 1 ? 'es' : ''}</p>
+        <div class="free-badge">🎟️ Entrada gratuita</div>
+        <div class="qr-box" id="qrBox"></div>
+        <div class="code-box"><div class="code-label">TU CÓDIGO</div><div class="code-val">${esc(code)}</div></div>
+        <p class="confirm-note">Preséntalo en taquilla. Toma captura para no perderlo.</p>
+        <div style="margin-top:10px;"><button type="button" class="cal-link" onclick="addToCalendar(${eventos.indexOf(e)})">＋ AGREGAR AL CALENDARIO</button></div>
+      </div>`;
+    makeQR('qrBox', `TRIKLES|${code}|${e.ID_Evento}|${esc(e.Titulo)}|${seats}|GEN`, 168, false);
+    return;
+  }
   const p = (typeof config === 'object' && config) ? config : {};
   const banco = p.Pago_Banco || 'Banco Azteca';
   const titular = p.Pago_Titular || '';
