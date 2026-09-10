@@ -108,6 +108,8 @@ textarea{min-height:70px;resize:vertical;}
 @media(max-width:640px){
   .kpis{grid-template-columns:1fr;} .grid2{grid-template-columns:1fr;} .row{grid-template-columns:56px 1fr;} .row .ractions{grid-column:1 / -1;} .modal{padding:28px 20px;} }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
 </head>
 <body>
 
@@ -234,12 +236,14 @@ textarea{min-height:70px;resize:vertical;}
         </div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center;">
-        <input type="search" id="resBuscar" placeholder="🔍 Buscar nombre, email, teléfono, código…" oninput="renderReservas(lastReservas)" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--input-border);border-radius:4px;">
+        <input type="search" id="resBuscar" placeholder="🔍 Buscar nombre, email, teléfono, código…" oninput="renderReservas(lastReservas)" style="flex:1;min-width:160px;padding:9px 12px;border:1px solid var(--input-border);border-radius:4px;">
+        <select id="resEvento" onchange="renderReservas(lastReservas)" style="width:auto;max-width:220px;"><option value="">Todos los eventos</option></select>
         <select id="resFiltro" onchange="renderReservas(lastReservas)" style="width:auto;">
           <option value="todas" selected>Todas</option>
           <option value="pendientes">Pendientes de pago</option>
           <option value="pagadas">Pagadas</option>
         </select>
+        <button class="btn btn-out btn-sm" onclick="descargarReservasPDF()">📄 PDF</button>
       </div>
       <div id="reservasList"><div class="empty"><div class="spinner"></div></div></div>
     </div>
@@ -897,6 +901,20 @@ function openEventForm(i){
         <input type="url" placeholder="…o pega URL de imagen" value="${esc(e.Imagen_URL||'')}" oninput="document.getElementById('f_Imagen_URL').value=this.value;document.getElementById('f_img_prev').src=getImageUrl(this.value);document.getElementById('f_img_prev').style.visibility='visible';">
       </div>
     </div>
+    <label class="field" style="margin:14px 0 6px;">📣 ANUNCIO DESPUÉS DEL QR (opcional)</label>
+    <div class="grid2">
+      <label class="field">TIPO<select id="f_Anuncio_Tipo">${opt(['Ninguno','Foto','Video'], e.Anuncio_Tipo||'Ninguno')}</select></label>
+      <label class="field">TEXTO (opcional)<input id="f_Anuncio_Texto" type="text" value="${esc(e.Anuncio_Texto||'')}" placeholder="Ej. Te esperamos en la dulcería"></label>
+    </div>
+    <div class="imgrow">
+      <img class="prev" id="f_ad_prev" src="${getImageUrl(e.Anuncio_URL)||''}" alt="" onerror="this.style.visibility='hidden'">
+      <div style="flex:1;">
+        <input type="hidden" id="f_Anuncio_URL" value="${esc(e.Anuncio_URL||'')}">
+        <input type="file" accept="image/*" id="f_ad_file" onchange="uploadImg('f_ad_file','f_Anuncio_URL','f_ad_prev')">
+        <p class="hint">Si es <b>Foto</b>: súbela o pega URL. Si es <b>Video</b>: pega el enlace de YouTube o un .mp4 abajo.</p>
+        <input type="url" placeholder="URL de foto o video (YouTube / .mp4)" value="${esc(e.Anuncio_URL||'')}" oninput="document.getElementById('f_Anuncio_URL').value=this.value;document.getElementById('f_ad_prev').src=getImageUrl(this.value);document.getElementById('f_ad_prev').style.visibility='visible';">
+      </div>
+    </div>
     <button class="btn btn-ink" style="width:100%;" id="f_save" onclick="saveEvent()">Guardar función</button>`;
   openOverlay('formModal');
 }
@@ -905,6 +923,7 @@ async function saveEvent(){
   const ev={ Titulo:val('f_Titulo'), Tipo:val('f_Tipo'), Descripcion:val('f_Descripcion'),
     Fecha:val('f_Fecha'), Hora_Inicio:val('f_Hora_Inicio'), Duracion_Min:val('f_Duracion_Min'),
     Precio_MXN:val('f_Precio_MXN'), Precio_VIP:val('f_Precio_VIP'), Cupo_Max:val('f_Cupo_Max'), Estado:val('f_Estado'),
+    Anuncio_Tipo:val('f_Anuncio_Tipo'), Anuncio_URL:val('f_Anuncio_URL'), Anuncio_Texto:val('f_Anuncio_Texto'),
     Es_Privado:val('f_Es_Privado'), Imagen_URL:val('f_Imagen_URL') };
   const id=val('f_ID_Evento'); if(id) ev.ID_Evento=id;
   if(!ev.Titulo){ toast('Ponle un título.','error'); return; }
@@ -1026,18 +1045,57 @@ async function pollReservas(showSpinner){
   }catch(err){ /* silencioso durante el sondeo */ }
 }
 function esPagada(r){ return String(r.Estado_Pago||'')!=='Pendiente'; } // '' (reservas viejas) = ya no pendiente
-function renderReservas(list){
-  list=list||[];
+function fillEventFilter(list){
+  const sel=document.getElementById('resEvento'); if(!sel) return;
+  const prev=sel.value;
+  const evts=[...new Set(list.map(r=>String(r.Titulo_Evento||'').trim()).filter(Boolean))].sort();
+  const nuevo='<option value="">Todos los eventos</option>'+evts.map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join('');
+  if(sel.innerHTML!==nuevo){ sel.innerHTML=nuevo; sel.value=evts.includes(prev)?prev:''; }
+}
+function filteredReservas(list){
+  list=list||lastReservas||[];
   const q=(document.getElementById('resBuscar')?.value||'').toLowerCase().trim();
   const filtro=document.getElementById('resFiltro')?.value||'todas';
+  const evento=document.getElementById('resEvento')?.value||'';
   let arr=list.filter(r=>{
     if(filtro==='pendientes' && esPagada(r)) return false;
     if(filtro==='pagadas' && !esPagada(r)) return false;
+    if(evento && String(r.Titulo_Evento||'')!==evento) return false;
     return true;
   });
   if(q) arr=arr.filter(r=> [r.Nombre_Miembro,r.Nombre,r.Email,r.Telefono,r.Codigo_Confirmacion,r.Titulo_Evento].some(v=>String(v||'').toLowerCase().includes(q)));
+  return arr;
+}
+function renderReservas(list){
+  list=list||[];
+  fillEventFilter(list);
+  const arr=filteredReservas(list);
   const el=document.getElementById('reservasList');
   el.innerHTML = arr.length ? arr.map(resCard).join('') : '<div class="empty">Sin reservas en este filtro.</div>';
+}
+function descargarReservasPDF(){
+  const arr=filteredReservas();
+  if(!arr.length){ toast('No hay reservas para exportar.','error'); return; }
+  const jsPDF=(window.jspdf||{}).jsPDF;
+  if(!jsPDF){ toast('No se pudo cargar el generador de PDF.','error'); return; }
+  const evento=document.getElementById('resEvento')?.value||'';
+  const doc=new jsPDF({unit:'pt',format:'a4'});
+  doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(20);
+  doc.text('Cineteca Trikles',40,44);
+  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(110);
+  doc.text('Lista de asistentes · '+(evento||'Todos los eventos'),40,63);
+  const totalPersonas=arr.reduce((a,r)=>a+(parseInt(r.Cantidad_Personas)||1),0);
+  doc.text('Generado: '+new Date().toLocaleString('es-MX')+'   ·   '+arr.length+' reserva(s)   ·   '+totalPersonas+' persona(s)',40,79);
+  const body=arr.map((r,i)=>[String(i+1), r.Nombre_Miembro||r.Nombre||'', r.Titulo_Evento||'', String(r.Cantidad_Personas||1),
+    r.Tipo_Pase==='VIP'?'VIP':'General', (String(r.Estado_Pago||'')==='Gratis'?'Gratis':(esPagada(r)?'Pagada':'Pendiente')),
+    r.Email||'', r.Telefono||'', r.Codigo_Confirmacion||'']);
+  doc.autoTable({ startY:94,
+    head:[['#','Nombre','Evento','Pers.','Pase','Estado','Email','Teléfono','Código']], body:body,
+    styles:{fontSize:8,cellPadding:4,overflow:'linebreak'}, headStyles:{fillColor:[23,21,17],textColor:255},
+    alternateRowStyles:{fillColor:[246,243,236]}, columnStyles:{0:{cellWidth:24},3:{cellWidth:32,halign:'center'}},
+    margin:{left:40,right:40} });
+  doc.save('asistentes'+(evento?('-'+evento.replace(/[^a-z0-9]+/gi,'_').slice(0,40)):'')+'.pdf');
+  toast('PDF generado ✓','success');
 }
 function resCard(r){
   const nombre=esc(r.Nombre_Miembro||r.Nombre||'—');
