@@ -305,6 +305,11 @@ button{font-family:inherit;}
 .free-badge{display:inline-block;background:var(--moss);color:#fff;font-weight:800;font-size:13px;letter-spacing:.04em;padding:7px 18px;border-radius:999px;margin:2px 0 14px;}
 .qr-legend{background:#FFF6D6;border:1px dashed var(--amber);color:#6b5200;border-radius:8px;padding:10px 14px;font-size:13px;margin:2px 0 14px;line-height:1.4;}
 .priv-badge{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.06em;background:var(--ink);color:var(--spore);padding:3px 8px;border-radius:999px;margin-left:8px;vertical-align:middle;text-transform:uppercase;}
+.sede-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--ink);padding-top:16px;}
+.sede-bar .sede-label{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--warm-gray);}
+.sede-pill{border:1.5px solid var(--ink);background:transparent;color:var(--ink);font-weight:800;font-size:14px;letter-spacing:.02em;padding:9px 22px;border-radius:999px;cursor:pointer;transition:all .12s;}
+.sede-pill:hover{background:var(--beige);}
+.sede-pill.on{background:var(--ink);color:var(--cream);}
 .codigo-row{display:flex;gap:8px;margin-bottom:4px;}
 .codigo-row input{flex:1;}
 .btn-code{flex:none;background:var(--ink);color:var(--cream);border:none;border-radius:2px;font-weight:700;font-size:12px;letter-spacing:.06em;padding:0 18px;cursor:pointer;text-transform:uppercase;}
@@ -423,8 +428,13 @@ button{font-family:inherit;}
   </div>
 </div>
 
+<!-- ============ SELECTOR DE SEDE ============ -->
+<section class="section" style="padding-top:8px;padding-bottom:0;">
+  <div class="sede-bar" id="sedeBar"></div>
+</section>
+
 <!-- ============ HOY EN PANTALLA ============ -->
-<section class="section" id="featuredSection" style="padding-bottom:96px;">
+<section class="section" id="featuredSection" style="padding-bottom:96px;padding-top:24px;">
   <div class="label-row">
     <span class="label label-yellow">EN PANTALLA · HOY</span>
     <span class="label-note serif">Una película a la vez</span>
@@ -569,6 +579,21 @@ const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw3skEAAbt6skxA
 // ============ STATE ============
 let eventos = [], config = {}, impacto = [], tiposEvento = {};
 let activeFilter = 'Todos';
+let SEDE = (function(){ try { return localStorage.getItem('trikles_sede') || 'Tlaxcala'; } catch(_) { return 'Tlaxcala'; } })();
+const SEDES = ['Tlaxcala', 'Puebla'];
+function enSede(e){ const s = String(e.Sucursal || '').trim(); return !s || s === 'Ambas' || s === SEDE; }
+function eventosSede(){ return eventos.filter(enSede); }
+function renderSedeBar(){
+  const bar = document.getElementById('sedeBar'); if(!bar) return;
+  bar.innerHTML = '<span class="sede-label">📍 Sede</span>' + SEDES.map(s =>
+    `<button type="button" class="sede-pill${s === SEDE ? ' on' : ''}" onclick="setSede('${s}')">${esc(s)}</button>`
+  ).join('');
+}
+function setSede(s){
+  if(s === SEDE) return;
+  SEDE = s; try { localStorage.setItem('trikles_sede', s); } catch(_){}
+  renderSedeBar(); renderFeatured(); buildChips(); renderEvents();
+}
 let cart = {};                 // id -> qty
 let reserveCtx = null;         // contexto del modal de reserva/solicitud
 
@@ -653,6 +678,7 @@ async function loadData() {
       renderShop();
     }
     renderConfig();
+    renderSedeBar();
     renderFeatured();
     buildChips();
     renderEvents();
@@ -694,8 +720,11 @@ function renderConfig() {
 // ============ FEATURED ============
 function renderFeatured() {
   const body = document.getElementById('featuredBody');
-  if (!eventos.length) { document.getElementById('featuredSection').style.display = 'none'; return; }
-  const e = eventos[0];
+  const bySede = eventosSede();
+  if (!bySede.length) { document.getElementById('featuredSection').style.display = 'none'; return; }
+  document.getElementById('featuredSection').style.display = '';
+  const e = bySede[0];
+  const gi = eventos.indexOf(e);
   const img = getImageUrl(e.Imagen_URL);
   const disp = available(e);
   const spots = disp > 0 ? `Quedan ${disp} lugares` : 'Agotado';
@@ -711,7 +740,7 @@ function renderFeatured() {
       <div class="featured-side">
         <span class="featured-meta">${eventDate(e)} · ${spots}</span>
         ${disp > 0
-          ? `<button type="button" class="btn-ink" onclick="openReserveEvent(0)">RESERVAR LUGAR</button>`
+          ? `<button type="button" class="btn-ink" onclick="openReserveEvent(${gi})">RESERVAR LUGAR</button>`
           : `<button type="button" class="btn-ink" disabled>AGOTADO</button>`}
       </div>
     </div>`;
@@ -719,7 +748,8 @@ function renderFeatured() {
 
 // ============ CHIPS / FILTERS ============
 function buildChips() {
-  const types = Array.from(new Set(eventos.map(e => e.Tipo).filter(Boolean)));
+  const types = Array.from(new Set(eventosSede().map(e => e.Tipo).filter(Boolean)));
+  if (!types.includes(activeFilter) && activeFilter !== 'Todos') activeFilter = 'Todos';
   const cats = ['Todos', ...types];
   document.getElementById('typeChips').innerHTML = cats.map(c =>
     `<button type="button" class="chip${c === activeFilter ? ' active' : ''}" data-cat="${esc(c)}" onclick="setFilter('${esc(c)}')">${esc(c)}</button>`
@@ -734,9 +764,10 @@ function setFilter(cat) {
 // ============ CARTELERA ============
 function renderEvents() {
   const list = document.getElementById('eventsList');
-  const filtered = eventos.filter(e => activeFilter === 'Todos' || e.Tipo === activeFilter);
-  if (!eventos.length) { list.innerHTML = '<div class="empty">No hay funciones próximas por ahora. ¡Vuelve pronto!</div>'; return; }
-  if (!filtered.length) { list.innerHTML = '<div class="empty">No hay funciones de ese tipo por ahora.</div>'; return; }
+  const bySede = eventosSede();
+  const filtered = bySede.filter(e => activeFilter === 'Todos' || e.Tipo === activeFilter);
+  if (!bySede.length) { list.innerHTML = `<div class="empty">No hay funciones en ${esc(SEDE)} por ahora. Prueba la otra sede o vuelve pronto.</div>`; return; }
+  if (!filtered.length) { list.innerHTML = '<div class="empty">No hay funciones de ese tipo en esta sede.</div>'; return; }
   list.innerHTML = filtered.map(e => {
     const i = eventos.indexOf(e);
     const disp = available(e);

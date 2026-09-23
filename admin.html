@@ -867,7 +867,7 @@ function renderEvents(){
       <div>
         <span class="tag-red">${esc(e.Tipo||'')}${e.Es_Privado==='Sí'?' · PRIVADO':''}</span>
         <div class="rtitle">${esc(e.Titulo||'(sin título)')}</div>
-        <div class="rmeta">${esc(e.Fecha||'—')} · ${esc(e.Hora_Inicio||'')} · $${esc(e.Precio_MXN||'0')} · cupo ${esc(e.Reservas_Confirmadas||'0')}/${esc(e.Cupo_Max||'0')}
+        <div class="rmeta">${esc(e.Fecha||'—')} · ${esc(e.Hora_Inicio||'')} · 📍${esc(e.Sucursal||'Ambas')} · $${esc(e.Precio_MXN||'0')} · cupo ${esc(e.Reservas_Confirmadas||'0')}/${esc(e.Cupo_Max||'0')}
           <span class="pill ${activo?'on':'off'}">${activo?'Activo':'Oculto'}</span></div>
       </div>
       <div class="ractions">
@@ -885,8 +885,10 @@ function openEventForm(i){
     <label class="field">TÍTULO<input id="f_Titulo" type="text" value="${esc(e.Titulo||'')}"></label>
     <div class="grid2">
       <label class="field">TIPO<input id="f_Tipo" type="text" placeholder="Película, Documental…" value="${esc(e.Tipo||'')}"></label>
-      <label class="field">PRECIO (MXN)<input id="f_Precio_MXN" type="number" min="0" value="${esc(e.Precio_MXN||'0')}"></label>
+      <label class="field">📍 SEDE<select id="f_Sucursal">${opt(['Ambas','Tlaxcala','Puebla'], e.Sucursal||'Ambas')}</select>
+        <span class="hint">En qué sede aparece esta función en la cartelera.</span></label>
     </div>
+    <label class="field">PRECIO (MXN)<input id="f_Precio_MXN" type="number" min="0" value="${esc(e.Precio_MXN||'0')}"></label>
     <label class="field">👑 PRECIO VIP (opcional)<input id="f_Precio_VIP" type="number" min="0" placeholder="Ej. 150" value="${esc(e.Precio_VIP||'')}">
       <span class="hint">Da acceso a los mejores lugares (zona VIP) y un QR premium. Vacío o 0 = esta función no ofrece VIP.</span></label>
     <label class="field">DESCRIPCIÓN<textarea id="f_Descripcion">${esc(e.Descripcion||'')}</textarea></label>
@@ -936,6 +938,7 @@ async function saveEvent(){
     Fecha:val('f_Fecha'), Hora_Inicio:val('f_Hora_Inicio'), Duracion_Min:val('f_Duracion_Min'),
     Precio_MXN:val('f_Precio_MXN'), Precio_VIP:val('f_Precio_VIP'), Cupo_Max:val('f_Cupo_Max'), Estado:val('f_Estado'),
     Anuncio_Tipo:val('f_Anuncio_Tipo'), Anuncio_URL:val('f_Anuncio_URL'), Anuncio_Texto:val('f_Anuncio_Texto'),
+    Sucursal:val('f_Sucursal'),
     Es_Privado:val('f_Es_Privado'), Imagen_URL:val('f_Imagen_URL') };
   const id=val('f_ID_Evento'); if(id) ev.ID_Evento=id;
   if(!ev.Titulo){ toast('Ponle un título.','error'); return; }
