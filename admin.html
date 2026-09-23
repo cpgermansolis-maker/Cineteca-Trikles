@@ -170,6 +170,7 @@ textarea{min-height:70px;resize:vertical;}
       <button class="tab" id="tabDulceria" onclick="showTab('dulceria')">Dulcería</button>
       <button class="tab" id="tabMenu" onclick="showTab('menu')">🍔 Menú</button>
       <button class="tab" id="tabReservas" onclick="showTab('reservas')">🎟️ Reservas</button>
+      <button class="tab" id="tabCodigos" onclick="showTab('codigos')">🎫 Códigos</button>
       <button class="tab" id="tabFinanzas" onclick="showTab('finanzas')">Finanzas</button>
       <button class="tab" id="tabCocina" onclick="showTab('cocina')">🍳 Cocina</button>
     </div>
@@ -246,6 +247,15 @@ textarea{min-height:70px;resize:vertical;}
         <button class="btn btn-out btn-sm" onclick="descargarReservasPDF()">📄 PDF</button>
       </div>
       <div id="reservasList"><div class="empty"><div class="spinner"></div></div></div>
+    </div>
+
+    <div id="panelCodigos" style="display:none;">
+      <div class="panel-head">
+        <span class="label">Códigos de invitación / cortesía / descuento</span>
+        <button class="btn btn-ink btn-sm" onclick="openCodigoForm()">+ Nuevo código</button>
+      </div>
+      <p class="hint" style="margin-bottom:12px;">Los eventos <b>privados</b> exigen un código de <b>Invitación</b> (o Gratis) para reservar. En eventos con costo, un código puede dar <b>entrada gratis</b> o <b>descuento</b> (%, o $).</p>
+      <div id="codigosList"><div class="empty"><div class="spinner"></div></div></div>
     </div>
 
     <div id="panelCocina" style="display:none;">
@@ -416,7 +426,7 @@ async function loadAll(){
 
 // ===== TABS =====
 function showTab(t){
-  ['Cartelera','Dulceria','Menu','Reservas','Finanzas','Cocina'].forEach(x=>{
+  ['Cartelera','Dulceria','Menu','Reservas','Codigos','Finanzas','Cocina'].forEach(x=>{
     const tab = x.toLowerCase();
     document.getElementById('panel'+x).style.display = (tab===t)?'block':'none';
     document.getElementById('tab'+x).classList.toggle('active', tab===t);
@@ -424,6 +434,7 @@ function showTab(t){
   if(t==='finanzas') loadStats();
   if(t==='menu') loadPlantillas();
   if(t==='reservas') startReservas(); else stopReservas();
+  if(t==='codigos') loadCodigos();
   if(t==='cocina') startCocina(); else stopCocina();
 }
 
@@ -889,7 +900,8 @@ function openEventForm(i){
     </div>
     <div class="grid2">
       <label class="field">ESTADO<select id="f_Estado">${opt(['Activo','Inactivo'], e.Estado||'Activo')}</select></label>
-      <label class="field">¿PRIVADO?<select id="f_Es_Privado">${opt(['No','Sí'], e.Es_Privado==='Sí'?'Sí':'No')}</select></label>
+      <label class="field">¿PRIVADO? 🔒<select id="f_Es_Privado">${opt(['No','Sí'], e.Es_Privado==='Sí'?'Sí':'No')}</select>
+        <span class="hint">Sí = aparece en cartelera marcado y pide código de invitación (créalos en la pestaña 🎫 Códigos).</span></label>
     </div>
     <label class="field" style="margin-bottom:6px;">IMAGEN (PÓSTER)</label>
     <div class="imgrow">
@@ -1163,6 +1175,93 @@ async function savePago(){
   try{
     const r=await api({action:'saveConfigPago', token, Pago_Banco:val('pg_Banco'), Pago_Titular:val('pg_Titular'), Pago_Numero:val('pg_Numero'), Pago_WhatsApp:val('pg_WhatsApp'), Pago_Nota:val('pg_Nota')});
     if(r.status==='ok'){ toast('Datos de pago guardados.','success'); document.getElementById('pagoEdit').style.display='none'; pollReservas(false); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else toast(r.message||'No se pudo.','error');
+  }catch(e){ toast('Error de conexión.','error'); }
+}
+
+// ===== CÓDIGOS =====
+let CODIGOS=[];
+const COD_TIPOS=[['Invitacion','Invitación (solo acceso)'],['Gratis','Entrada gratis'],['DescuentoPct','Descuento %'],['DescuentoMonto','Descuento $']];
+function tipoCodLabel(t){ const f=COD_TIPOS.find(x=>x[0]===t); return f?f[1]:(t||'Invitación'); }
+function eventoNombre(id){ const e=(eventos||[]).find(x=>String(x.ID_Evento)===String(id)); return e?e.Titulo:('Evento '+id); }
+async function loadCodigos(){
+  document.getElementById('codigosList').innerHTML='<div class="empty"><div class="spinner"></div></div>';
+  try{
+    const r=await api({action:'listCodigos', token});
+    if(r.status!=='ok'){ if(/sesión/i.test(r.message||'')) sessionExpired(); return; }
+    CODIGOS=r.codigos||[];
+    renderCodigos();
+  }catch(e){ document.getElementById('codigosList').innerHTML='<div class="empty">Error al cargar.</div>'; }
+}
+function renderCodigos(){
+  const el=document.getElementById('codigosList');
+  if(!CODIGOS.length){ el.innerHTML='<div class="empty">Aún no hay códigos. Crea el primero con “+ Nuevo código”.</div>'; return; }
+  el.innerHTML=CODIGOS.map((c,i)=>{
+    const activo=String(c.Activo||'')!=='No';
+    const evTxt = c.ID_Evento? ('📍 '+esc(eventoNombre(c.ID_Evento))) : 'Cualquier evento';
+    const usos = (c.Usos||0)+(c.Usos_Max?(' / '+c.Usos_Max):'');
+    let efecto=tipoCodLabel(c.Tipo);
+    if(c.Tipo==='DescuentoPct') efecto='Descuento '+(c.Valor||0)+'%';
+    if(c.Tipo==='DescuentoMonto') efecto='Descuento $'+(c.Valor||0);
+    return `<div class="row">
+      <div style="flex:1;min-width:0;">
+        <div class="rtitle" style="font-family:monospace;letter-spacing:.05em;">${esc(c.Codigo||'')} ${activo?'':'<span class="pill off">Inactivo</span>'}</div>
+        <div class="rmeta">${esc(efecto)} · ${evTxt} · usos ${esc(String(usos))}${c.Nota?(' · '+esc(c.Nota)):''}</div>
+      </div>
+      <div class="ractions">
+        <button class="btn btn-out btn-sm" onclick="openCodigoForm(${i})">Editar</button>
+        <button class="btn btn-red btn-sm" onclick="deleteCodigo(${i})">Borrar</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openCodigoForm(i){
+  const c=(i==null)?{}:CODIGOS[i];
+  const evOpts='<option value="">Cualquier evento</option>'+(eventos||[]).map(e=>`<option value="${esc(e.ID_Evento)}"${String(e.ID_Evento)===String(c.ID_Evento||'')?' selected':''}>${esc(e.Titulo||'')}${e.Es_Privado==='Sí'?' 🔒':''}</option>`).join('');
+  const tipoOpts=COD_TIPOS.map(t=>`<option value="${t[0]}"${(c.Tipo||'Invitacion')===t[0]?' selected':''}>${t[1]}</option>`).join('');
+  document.getElementById('formBody').innerHTML=`
+    <h2>${i==null?'Nuevo código':'Editar código'}</h2>
+    <input type="hidden" id="cd_id" value="${esc(c.id||'')}">
+    <div class="grid2">
+      <label class="field">CÓDIGO<input id="cd_Codigo" type="text" value="${esc(c.Codigo||'')}" placeholder="VIP2026" style="text-transform:uppercase;"></label>
+      <label class="field">EVENTO<select id="cd_Evento">${evOpts}</select></label>
+    </div>
+    <div class="grid2">
+      <label class="field">TIPO<select id="cd_Tipo" onchange="cdToggleValor()">${tipoOpts}</select></label>
+      <label class="field" id="cd_ValorWrap" style="display:none;">VALOR<input id="cd_Valor" type="number" min="0" value="${esc(c.Valor||'')}"><span class="hint" id="cd_ValorHint"></span></label>
+    </div>
+    <div class="grid2">
+      <label class="field">USOS MÁXIMOS (vacío = ilimitado)<input id="cd_Usos_Max" type="number" min="0" value="${esc(c.Usos_Max||'')}"></label>
+      <label class="field">ACTIVO<select id="cd_Activo">${opt(['Sí','No'], c.Activo==='No'?'No':'Sí')}</select></label>
+    </div>
+    <label class="field">NOTA (para quién / descripción)<input id="cd_Nota" type="text" value="${esc(c.Nota||'')}" placeholder="Invitado VIP, prensa, familia…"></label>
+    <button class="btn btn-ink" style="width:100%;margin-top:8px;" id="cd_save" onclick="saveCodigo()">Guardar código</button>`;
+  openOverlay('formModal');
+  cdToggleValor();
+}
+function cdToggleValor(){
+  const t=val('cd_Tipo'), wrap=document.getElementById('cd_ValorWrap'), hint=document.getElementById('cd_ValorHint');
+  const show=(t==='DescuentoPct'||t==='DescuentoMonto');
+  wrap.style.display= show?'block':'none';
+  if(hint) hint.textContent = t==='DescuentoPct'?'Porcentaje (ej. 50 = 50% off)':(t==='DescuentoMonto'?'Pesos a descontar (ej. 100)':'');
+}
+async function saveCodigo(){
+  const c={ Codigo:val('cd_Codigo').toUpperCase(), ID_Evento:val('cd_Evento'), Tipo:val('cd_Tipo'),
+    Valor:val('cd_Valor'), Usos_Max:val('cd_Usos_Max'), Activo:val('cd_Activo'), Nota:val('cd_Nota') };
+  const id=val('cd_id'); if(id) c.id=id;
+  if(!c.Codigo){ toast('Escribe el código.','error'); return; }
+  const btn=document.getElementById('cd_save'); btn.disabled=true; btn.textContent='Guardando…';
+  try{ const r=await api({action:'saveCodigo', token, codigo:c});
+    if(r.status==='ok'){ toast('Código guardado.','success'); closeOverlay('formModal'); loadCodigos(); }
+    else if(/sesión/i.test(r.message||'')) sessionExpired();
+    else { toast(r.message||'No se pudo.','error'); btn.disabled=false; btn.textContent='Guardar código'; }
+  }catch(e){ toast('Error de conexión.','error'); btn.disabled=false; btn.textContent='Guardar código'; }
+}
+async function deleteCodigo(i){
+  const c=CODIGOS[i]; if(!confirm('¿Borrar el código “'+(c.Codigo||'')+'”?')) return;
+  try{ const r=await api({action:'deleteCodigo', token, id:c.id});
+    if(r.status==='ok'){ toast('Código borrado.','success'); loadCodigos(); }
     else if(/sesión/i.test(r.message||'')) sessionExpired();
     else toast(r.message||'No se pudo.','error');
   }catch(e){ toast('Error de conexión.','error'); }
